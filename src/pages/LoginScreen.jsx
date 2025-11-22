@@ -26,7 +26,7 @@ export default function LoginScreen({ onBack, onRegister }) {
         
         {/* Botón Volver */}
         <button 
-          onClick={onBack}
+          onClick={() => navigate('/')}
           style={{ 
             background: 'transparent', 
             border: 'none', 
@@ -93,7 +93,7 @@ export default function LoginScreen({ onBack, onRegister }) {
         <div style={{ textAlign: 'center', marginTop: '20px', color: '#6b7280' }}>
           ¿No tienes cuenta?
           <button 
-            onClick={onRegister}
+            onClick={() => navigate('/registro')}
             style={{ 
               marginLeft: '5px', 
               background: 'none', 
