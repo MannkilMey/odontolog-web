@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function RegistrationScreen({ onBack, onLogin }) {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nombre, setNombre] = useState('')
@@ -40,7 +42,7 @@ export default function RegistrationScreen({ onBack, onLogin }) {
         
         {/* Botón Volver */}
         <button 
-          onClick={onBack}
+          onClick={() => navigate('/')}
           style={{ 
             background: 'transparent', 
             border: 'none', 
@@ -129,7 +131,7 @@ export default function RegistrationScreen({ onBack, onLogin }) {
         <div style={{ textAlign: 'center', marginTop: '20px', color: '#6b7280' }}>
           ¿Ya tienes cuenta?
           <button 
-            onClick={onLogin}
+            onClick={() => navigate('/login')}
             style={{ 
               marginLeft: '5px', 
               background: 'none', 
