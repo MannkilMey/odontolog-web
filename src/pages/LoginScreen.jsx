@@ -90,6 +90,22 @@ export default function LoginScreen({ onBack, onRegister }) {
           >
             {loading ? 'Cargando...' : '🔓 Iniciar Sesión'}
           </button>
+
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <button 
+              onClick={() => navigate('/forgot-password')}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: '#6b7280', 
+                cursor: 'pointer',
+                fontSize: '14px',
+                textDecoration: 'underline'
+              }}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
         </form>
 
         <div style={{ textAlign: 'center', marginTop: '20px', color: '#6b7280' }}>

@@ -28,6 +28,8 @@ import TimelineUnificadoScreen from './pages/TimelineUnificadoScreen'
 import ReportesScreen from './pages/ReportesScreen'
 import PrivacidadPage from './pages/PrivacidadPage'
 import TerminosPage from './pages/TerminosPage'
+import ForgotPasswordScreen from './pages/ForgotPasswordScreen'
+import ResetPasswordScreen from './pages/ResetPasswordScreen'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -36,30 +38,40 @@ function App() {
   const location = useLocation()
 
   useEffect(() => {
-    // Obtener sesión actual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-    })
+  // Obtener sesión actual
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    setSession(session)
+    setLoading(false)
+  })
 
-    // Escuchar cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔐 Auth event:', event)
-      setSession(session)
-      
-      // Cuando el usuario inicia sesión
-      if (event === 'SIGNED_IN' && session) {
+  // Escuchar cambios de autenticación
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log('🔐 Auth event:', event)
+    setSession(session)
+    
+    // Si es recuperación de contraseña, ir a reset-password
+    if (event === 'PASSWORD_RECOVERY') {
+      navigate('/reset-password')
+      return
+    }
+    
+    // Cuando el usuario inicia sesión normalmente
+    if (event === 'SIGNED_IN' && session) {
+      // Solo redirigir al dashboard si NO es recuperación de contraseña
+      const isPasswordRecovery = window.location.hash.includes('type=recovery')
+      if (!isPasswordRecovery) {
         navigate('/dashboard')
       }
-      
-      // Cuando cierra sesión
-      if (event === 'SIGNED_OUT') {
-        navigate('/login')
-      }
-    })
+    }
+    
+    // Cuando cierra sesión
+    if (event === 'SIGNED_OUT') {
+      navigate('/login')
+    }
+  })
 
-    return () => subscription.unsubscribe()
-  }, [navigate])
+  return () => subscription.unsubscribe()
+}, [navigate])
 
   if (loading) {
     return (
@@ -97,6 +109,14 @@ function App() {
       <Route 
         path="/registro" 
         element={session ? <Navigate to="/dashboard" replace /> : <RegistrationScreen />} 
+      />
+      <Route 
+        path="/forgot-password" 
+        element={<ForgotPasswordScreen />} 
+      />
+      <Route 
+        path="/reset-password" 
+        element={<ResetPasswordScreen />} 
       />
 
       {/* ==================== RUTAS PROTEGIDAS ==================== */}
