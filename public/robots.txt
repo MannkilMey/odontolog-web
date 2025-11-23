@@ -1,0 +1,10 @@
+# Permitir a todos los bots
+User-agent: *
+Allow: /
+
+# Bloquear rutas privadas
+Disallow: /dashboard
+Disallow: /reset-password
+
+# Sitemap
+Sitemap: https://odontolog.lat/sitemap.xml
