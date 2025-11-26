@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { generarPresupuestoPDF, generarReciboPDF } from '../utils/pdfGenerator'
-
+import { enviarPresupuesto, enviarRecibo, enviarConfirmacionCita } from '../utils/emailService'
+import EmailPreviewModal from '../components/EmailPreviewModal'
 
 export default function PacienteDetailScreen() {
   const { id } = useParams()
@@ -17,6 +18,10 @@ export default function PacienteDetailScreen() {
   const [pagos, setPagos] = useState([])
   const [planesPago, setPlanesPago] = useState([])
   const [todasLasCitas, setTodasLasCitas] = useState([])
+  const [modalEmail, setModalEmail] = useState({
+  isOpen: false,
+  emailData: null
+  })
 
   useEffect(() => {
     // Intentar cargar desde location.state primero
@@ -290,58 +295,64 @@ ${config?.nombre_comercial || config?.razon_social || 'Clínica Dental'}`
   }
 }
 
-const enviarPresupuestoPorEmail = async (presupuesto) => {
+  const enviarPresupuestoPorEmail = async (presupuesto) => {
   try {
     if (!paciente.email) {
       alert('⚠️ Este paciente no tiene email registrado')
       return
     }
 
-    // Cargar items del presupuesto
+    // Cargar items del presupuesto para el modal
     const { data: items } = await supabase
       .from('presupuesto_items')
       .select('*')
       .eq('presupuesto_id', presupuesto.id)
 
-    // Construir contenido del email
-    const itemsTexto = items?.map(item => 
-      `- ${item.descripcion} (x${item.cantidad}): Gs. ${Number(item.subtotal).toLocaleString('es-PY')}`
-    ).join('\n') || ''
+    // Construir HTML del preview
+    const itemsHTML = items?.map(item => 
+      `<li style="margin-bottom: 8px;">${item.descripcion} (x${item.cantidad}): Gs. ${Number(item.subtotal).toLocaleString('es-PY')}</li>`
+    ).join('') || ''
 
-    const asunto = `Presupuesto ${presupuesto.numero_presupuesto} - ${config?.nombre_comercial || 'Clínica Dental'}`
-    
-    const cuerpo = `Estimado/a ${paciente.nombre} ${paciente.apellido},
+    const html = `
+      <div style="padding: 20px;">
+        <h3>Presupuesto: ${presupuesto.numero_presupuesto}</h3>
+        <p><strong>Fecha:</strong> ${formatDate(presupuesto.fecha_emision)}</p>
+        ${presupuesto.fecha_vencimiento ? `<p><strong>Válido hasta:</strong> ${formatDate(presupuesto.fecha_vencimiento)}</p>` : ''}
+        
+        <h4>Detalles:</h4>
+        <ul>
+          ${itemsHTML}
+        </ul>
+        
+        <p style="font-size: 18px; font-weight: bold; color: #10b981;">
+          Total: Gs. ${Number(presupuesto.total).toLocaleString('es-PY')}
+        </p>
+        
+        ${presupuesto.notas ? `<p><em>${presupuesto.notas}</em></p>` : ''}
+      </div>
+    `
 
-Le enviamos el presupuesto solicitado:
-
-PRESUPUESTO: ${presupuesto.numero_presupuesto}
-Fecha de emisión: ${formatDate(presupuesto.fecha_emision)}
-${presupuesto.fecha_vencimiento ? `Válido hasta: ${formatDate(presupuesto.fecha_vencimiento)}\n` : ''}
-
-DETALLES:
-${itemsTexto}
-
-TOTAL: Gs. ${Number(presupuesto.total).toLocaleString('es-PY')}
-
-${presupuesto.notas ? `\nObservaciones:\n${presupuesto.notas}\n` : ''}
-
-Para cualquier consulta, no dude en contactarnos.
-
----
-${config?.razon_social || ''}
-${config?.telefono ? `Tel: ${config.telefono}` : ''}
-${config?.email_facturacion ? `Email: ${config.email_facturacion}` : ''}`
-
-    // Abrir cliente de email con el contenido
-    const mailtoLink = `mailto:${paciente.email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`
-    window.location.href = mailtoLink
+    // Mostrar modal de confirmación
+    setModalEmail({
+      isOpen: true,
+      emailData: {
+        tipo: 'email',
+        tipoLabel: 'Presupuesto',
+        destinatario: paciente.email,
+        asunto: `Presupuesto ${presupuesto.numero_presupuesto}`,
+        html: html,
+        onConfirm: async () => {
+          await enviarPresupuesto(presupuesto, paciente, null)
+          loadPacienteData(paciente.id)
+        }
+      }
+    })
 
   } catch (error) {
     console.error('Error:', error)
-    alert('Error al abrir email')
+    alert('Error al preparar email: ' + error.message)
   }
 }
-
 const eliminarPresupuesto = async (presupuestoId, numeroPresupuesto) => {
   const confirmacion = window.confirm(
     `⚠️ ¿Estás seguro de eliminar el presupuesto ${numeroPresupuesto}?\n\nEsta acción no se puede deshacer.`
@@ -1182,7 +1193,15 @@ const eliminarPago = async (pagoId, numeroRecibo) => {
   )}
 </div>
     </div>
+    
   )}
+  {/* Modal de Confirmación de Email */}
+<EmailPreviewModal
+  isOpen={modalEmail.isOpen}
+  onClose={() => setModalEmail({ isOpen: false, emailData: null })}
+  onConfirm={modalEmail.emailData?.onConfirm}
+  emailData={modalEmail.emailData || {}}
+/>
 </div>
 
       {/* Footer */}

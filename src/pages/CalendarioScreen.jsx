@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailService'
+import EmailPreviewModal from '../components/EmailPreviewModal'
 
 export default function CalendarioScreen() {
   const navigate = useNavigate()
@@ -9,6 +11,10 @@ export default function CalendarioScreen() {
   const [pacientes, setPacientes] = useState([])
   const [vistaActual, setVistaActual] = useState('dia') // 'dia', 'semana', 'mes'
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date())
+  const [modalEmail, setModalEmail] = useState({
+  isOpen: false,
+  emailData: null
+  })
 
   useEffect(() => {
     loadData()
@@ -146,6 +152,132 @@ export default function CalendarioScreen() {
     }
     return labels[estado] || estado
   }
+    const enviarRecordatorioEmail = async (cita) => {
+  try {
+    if (!cita.pacientes || !cita.pacientes.email) {
+      alert('⚠️ Este paciente no tiene email registrado')
+      return
+    }
+
+    const fechaCita = new Date(cita.fecha_cita)
+    const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    })
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 32px;">🔔 Recordatorio de Cita</h1>
+        </div>
+        
+        <div style="padding: 40px 30px; background: white;">
+          <h2 style="color: #1f2937; margin-bottom: 20px;">¡No olvide su cita!</h2>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Hola <strong>${cita.pacientes.nombre}</strong>,
+          </p>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Este es un recordatorio de su cita dental:
+          </p>
+          
+          <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <p style="color: #92400e; margin: 5px 0;">
+              <strong>📅 Fecha:</strong> ${fechaFormateada}
+            </p>
+            <p style="color: #92400e; margin: 5px 0;">
+              <strong>🕐 Hora:</strong> ${formatTime(cita.hora_inicio)}
+            </p>
+            <p style="color: #92400e; margin: 5px 0;">
+              <strong>📋 Motivo:</strong> ${cita.motivo || 'Consulta general'}
+            </p>
+          </div>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Por favor confirme su asistencia o avísenos si necesita reprogramar.
+          </p>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">
+              ¡Lo esperamos!<br>
+              <strong>Equipo OdontoLog</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+
+    // Preparar paciente para el servicio
+    const paciente = {
+      id: cita.paciente_id,
+      nombre: cita.pacientes.nombre,
+      apellido: cita.pacientes.apellido,
+      email: cita.pacientes.email
+    }
+
+    setModalEmail({
+      isOpen: true,
+      emailData: {
+        tipo: 'email',
+        tipoLabel: 'Recordatorio de Cita',
+        destinatario: paciente.email,
+        asunto: `🔔 Recordatorio: Cita ${fechaFormateada} a las ${formatTime(cita.hora_inicio)}`,
+        html: html,
+        onConfirm: async () => {
+          await enviarRecordatorioCita(cita, paciente)
+          loadData()
+        }
+      }
+    })
+
+  } catch (error) {
+    console.error('Error:', error)
+    alert('Error al preparar recordatorio: ' + error.message)
+  }
+}
+
+const enviarRecordatorioWhatsApp = async (cita) => {
+  try {
+    if (!cita.pacientes || !cita.pacientes.telefono) {
+      alert('⚠️ Este paciente no tiene teléfono registrado')
+      return
+    }
+
+    let telefono = cita.pacientes.telefono.replace(/[^0-9]/g, '')
+    if (!telefono.startsWith('595')) {
+      telefono = '595' + telefono
+    }
+
+    const fechaCita = new Date(cita.fecha_cita)
+    const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    })
+
+    const mensaje = `Hola ${cita.pacientes.nombre},
+
+🔔 *Recordatorio de Cita*
+
+📅 Fecha: ${fechaFormateada}
+🕐 Hora: ${formatTime(cita.hora_inicio)}
+📋 Motivo: ${cita.motivo || 'Consulta general'}
+
+Por favor confirme su asistencia o avísenos si necesita reprogramar.
+
+¡Lo esperamos!
+Equipo OdontoLog`
+
+    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
+    window.open(url, '_blank')
+
+  } catch (error) {
+    console.error('Error:', error)
+    alert('Error al abrir WhatsApp')
+  }
+}
 
   // Agrupar citas por fecha (para vista de semana/mes)
   const citasPorFecha = citas.reduce((acc, cita) => {
@@ -267,6 +399,13 @@ export default function CalendarioScreen() {
             getEstadoColor={getEstadoColor}
           />
         )}
+        {/* Modal de Confirmación de Email */}
+        <EmailPreviewModal
+          isOpen={modalEmail.isOpen}
+          onClose={() => setModalEmail({ isOpen: false, emailData: null })}
+          onConfirm={modalEmail.emailData?.onConfirm}
+          emailData={modalEmail.emailData || {}}
+        />
       </div>
 
       {/* Footer */}
@@ -297,45 +436,81 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
   }
 
   return (
-    <div style={styles.citasList}>
-      {citasDelDia.map((cita, index) => (
+  <div style={styles.citasList}>
+    {citasDelDia.map((cita, index) => (
+      <div 
+        key={index} 
+        style={{
+          ...styles.citaCard,
+          borderLeftColor: getEstadoColor(cita.estado)
+        }}
+      >
+        <div style={styles.citaHeader}>
+          <div style={styles.citaTime}>
+            {formatTime(cita.hora_inicio)} - {formatTime(cita.hora_fin)}
+          </div>
+          <div style={{
+            ...styles.citaEstado,
+            backgroundColor: getEstadoColor(cita.estado)
+          }}>
+            {getEstadoLabel(cita.estado)}
+          </div>
+        </div>
+
         <div 
-          key={index} 
-          style={{
-            ...styles.citaCard,
-            borderLeftColor: getEstadoColor(cita.estado)
-          }}
+          style={styles.citaPaciente}
           onClick={() => navigate(`/cita/${cita.id}`)}
         >
-          <div style={styles.citaHeader}>
-            <div style={styles.citaTime}>
-              {formatTime(cita.hora_inicio)} - {formatTime(cita.hora_fin)}
-            </div>
-            <div style={{
-              ...styles.citaEstado,
-              backgroundColor: getEstadoColor(cita.estado)
-            }}>
-              {getEstadoLabel(cita.estado)}
-            </div>
-          </div>
-
-          <div style={styles.citaPaciente}>
-            {cita.pacientes?.nombre} {cita.pacientes?.apellido}
-          </div>
-
-          <div style={styles.citaMotivo}>
-            {cita.motivo}
-          </div>
-
-          {cita.notas && (
-            <div style={styles.citaNotas}>
-              {cita.notas}
-            </div>
-          )}
+          {cita.pacientes?.nombre} {cita.pacientes?.apellido}
         </div>
-      ))}
-    </div>
-  )
+
+        <div style={styles.citaMotivo}>
+          {cita.motivo}
+        </div>
+
+        {cita.notas && (
+          <div style={styles.citaNotas}>
+            {cita.notas}
+          </div>
+        )}
+
+        {/* Botones de Recordatorio */}
+        <div style={styles.citaActions}>
+          <button
+            style={{...styles.citaActionButton, backgroundColor: '#3b82f6'}}
+            onClick={(e) => {
+              e.stopPropagation()
+              enviarRecordatorioEmail(cita)
+            }}
+            title="Enviar recordatorio por Email"
+          >
+            📧 Email
+          </button>
+          <button
+            style={{...styles.citaActionButton, backgroundColor: '#25D366'}}
+            onClick={(e) => {
+              e.stopPropagation()
+              enviarRecordatorioWhatsApp(cita)
+            }}
+            title="Enviar recordatorio por WhatsApp"
+          >
+            📱 WhatsApp
+          </button>
+          <button
+            style={{...styles.citaActionButton, backgroundColor: '#6b7280'}}
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/cita/${cita.id}`)
+            }}
+            title="Ver detalles"
+          >
+            📋 Detalles
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+)
 }
 
 // Componente Vista Semana
@@ -810,4 +985,22 @@ const styles = {
     color: '#94a3b8',
     fontStyle: 'italic',
   },
+  citaActions: {
+  display: 'flex',
+  gap: '8px',
+  marginTop: '12px',
+  paddingTop: '12px',
+  borderTop: '1px solid #f3f4f6',
+},
+citaActionButton: {
+  flex: 1,
+  padding: '8px 12px',
+  border: 'none',
+  borderRadius: '6px',
+  color: '#ffffff',
+  fontSize: '12px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+},
 }
