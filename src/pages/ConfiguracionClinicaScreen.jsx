@@ -321,6 +321,39 @@ export default function ConfiguracionClinicaScreen() {
               <span style={styles.colorHelp}>Este color aparecerá en tus documentos</span>
             </div>
           </div>
+          <div style={styles.section}>
+            <div style={styles.sectionTitle}>⚙️ Configuraciones Adicionales</div>
+            
+            <div style={styles.configGrid}>
+              <button
+                onClick={() => navigate('/configuracion-notificaciones')}
+                style={styles.configCard}
+              >
+                <div style={styles.configIcon}>🔔</div>
+                <div style={styles.configInfo}>
+                  <div style={styles.configTitle}>Notificaciones</div>
+                  <div style={styles.configDescription}>
+                    Configurar recordatorios automáticos y envío de mensajes
+                  </div>
+                </div>
+                <div style={styles.configArrow}>→</div>
+              </button>
+
+              <button
+                onClick={() => navigate('/catalogo-procedimientos')}
+                style={styles.configCard}
+              >
+                <div style={styles.configIcon}>📋</div>
+                <div style={styles.configInfo}>
+                  <div style={styles.configTitle}>Catálogo de Procedimientos</div>
+                  <div style={styles.configDescription}>
+                    Gestionar tratamientos y precios
+                  </div>
+                </div>
+                <div style={styles.configArrow}>→</div>
+              </button>
+            </div>
+          </div>
 
           <div style={styles.actionsContainer}>
             <button
@@ -572,4 +605,48 @@ const styles = {
     color: '#94a3b8',
     fontStyle: 'italic',
   },
+  configGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '16px',
+  },
+  configCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '16px',
+    backgroundColor: '#f9fafb',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    textAlign: 'left',
+    width: '100%',
+  },
+  configIcon: {
+    fontSize: '32px',
+    minWidth: '40px',
+    textAlign: 'center',
+  },
+  configInfo: {
+    flex: 1,
+  },
+  configTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: '4px',
+  },
+  configDescription: {
+    fontSize: '13px',
+    color: '#6b7280',
+    lineHeight: '1.4',
+  },
+  configArrow: {
+    fontSize: '20px',
+    color: '#9ca3af',
+    minWidth: '24px',
+  },
+
 }

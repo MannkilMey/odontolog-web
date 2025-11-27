@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import { registrarIngreso, registrarSalida } from './utils/analytics'
 import LandingPage from './pages/LandingPage'
 import LoginScreen from './pages/LoginScreen'
 import RegistrationScreen from './pages/RegistrationScreen'
@@ -12,6 +13,7 @@ import PacienteDetailScreen from './pages/PacienteDetailScreen'
 import OdontogramaScreen from './pages/OdontogramaScreen'
 import MetricasScreen from './pages/MetricasScreen'
 import ConfiguracionClinicaScreen from './pages/ConfiguracionClinicaScreen'
+import ConfiguracionNotificacionesScreen from './pages/ConfiguracionNotificacionesScreen'
 import PresupuestoScreen from './pages/PresupuestoScreen'
 import RegistrarPagoScreen from './pages/RegistrarPagoScreen'
 import CatalogoProcedimientosScreen from './pages/CatalogoProcedimientosScreen'
@@ -37,41 +39,70 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // ============================================
+  // TRACKING DE SESIONES
+  // ============================================
   useEffect(() => {
-  // Obtener sesión actual
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    setSession(session)
-    setLoading(false)
-  })
-
-  // Escuchar cambios de autenticación
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log('🔐 Auth event:', event)
-    setSession(session)
-    
-    // Si es recuperación de contraseña, ir a reset-password
-    if (event === 'PASSWORD_RECOVERY') {
-      navigate('/reset-password')
-      return
+    // Registrar ingreso solo si hay sesión activa
+    if (session) {
+      registrarIngreso()
     }
-    
-    // Cuando el usuario inicia sesión normalmente
-    if (event === 'SIGNED_IN' && session) {
-      // Solo redirigir al dashboard si NO es recuperación de contraseña
-      const isPasswordRecovery = window.location.hash.includes('type=recovery')
-      if (!isPasswordRecovery) {
-        navigate('/dashboard')
+
+    // Registrar salida al cerrar/refrescar
+    const handleBeforeUnload = () => {
+      if (session) {
+        registrarSalida()
       }
     }
-    
-    // Cuando cierra sesión
-    if (event === 'SIGNED_OUT') {
-      navigate('/login')
-    }
-  })
 
-  return () => subscription.unsubscribe()
-}, [navigate])
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (session) {
+        registrarSalida()
+      }
+    }
+  }, [session])
+
+  // ============================================
+  // AUTENTICACIÓN
+  // ============================================
+  useEffect(() => {
+    // Obtener sesión actual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setLoading(false)
+    })
+
+    // Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 Auth event:', event)
+      setSession(session)
+      
+      // Si es recuperación de contraseña, ir a reset-password
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password')
+        return
+      }
+      
+      // Cuando el usuario inicia sesión normalmente
+      if (event === 'SIGNED_IN' && session) {
+        // Solo redirigir al dashboard si NO es recuperación de contraseña
+        const isPasswordRecovery = window.location.hash.includes('type=recovery')
+        if (!isPasswordRecovery) {
+          navigate('/dashboard')
+        }
+      }
+      
+      // Cuando cierra sesión
+      if (event === 'SIGNED_OUT') {
+        navigate('/login')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [navigate])
 
   if (loading) {
     return (
@@ -217,6 +248,10 @@ function App() {
       <Route 
         path="/configuracion" 
         element={session ? <ConfiguracionClinicaScreen /> : <Navigate to="/login" replace />} 
+      />
+      <Route 
+        path="/configuracion-notificaciones" 
+        element={session ? <ConfiguracionNotificacionesScreen /> : <Navigate to="/login" replace />} 
       />
       <Route 
         path="/catalogo-procedimientos" 
