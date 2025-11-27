@@ -256,30 +256,39 @@ export default function PacienteDetailScreen() {
   }
 
   const enviarPresupuestoPorWhatsApp = async (presupuesto) => {
-    try {
-      if (!paciente.telefono) {
-        alert('⚠️ Este paciente no tiene teléfono registrado')
-        return
-      }
+  try {
+    if (!paciente.telefono) {
+      alert('⚠️ Este paciente no tiene teléfono registrado')
+      return
+    }
 
-      // ✅ Cargar configuración de la clínica
-      const { data: { user } } = await supabase.auth.getUser()
-      const { data: config } = await supabase
-        .from('configuracion_clinica')
-        .select('*')
-        .eq('dentista_id', user.id)
-        .single()
+    // Cargar configuración de la clínica
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      alert('⚠️ Error: No se pudo obtener el usuario')
+      return
+    }
 
-      // Formatear número de teléfono (remover caracteres especiales)
-      let telefono = paciente.telefono.replace(/[^0-9]/g, '')
-      
-      // Si no tiene código de país, agregar Paraguay (+595)
-      if (!telefono.startsWith('595')) {
-        telefono = '595' + telefono
-      }
+    const { data: configData, error: configError } = await supabase
+      .from('configuracion_clinica')
+      .select('*')
+      .eq('dentista_id', user.id)
+      .single()
 
-      // Construir mensaje
-      const mensaje = `Hola ${paciente.nombre},
+    // ✅ Usar la variable correcta
+    const config = configData
+    
+    // Formatear número de teléfono
+    let telefono = paciente.telefono.replace(/[^0-9]/g, '')
+    if (!telefono.startsWith('595')) {
+      telefono = '595' + telefono
+    }
+
+    // Construir mensaje
+    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
+    
+    const mensaje = `Hola ${paciente.nombre},
 
 Le envío el presupuesto ${presupuesto.numero_presupuesto}:
 
@@ -291,20 +300,20 @@ ${presupuesto.fecha_vencimiento ? `- Válido hasta: ${formatDate(presupuesto.fec
 Para más información, no dude en contactarnos.
 
 Saludos,
-*${config?.nombre_comercial || config?.razon_social || 'Clínica Dental'}*
+*${nombreClinica}*
 ${config?.telefono ? `📞 ${config.telefono}` : ''}`
 
-      // Abrir WhatsApp Web con el mensaje
-      const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-      window.open(url, '_blank')
+    // Abrir WhatsApp Web
+    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
+    window.open(url, '_blank')
 
-      console.log('✅ WhatsApp abierto con presupuesto')
+    console.log('✅ WhatsApp abierto con presupuesto')
 
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Error al abrir WhatsApp: ' + error.message)
-    }
+  } catch (error) {
+    console.error('Error completo:', error)
+    alert('Error al abrir WhatsApp: ' + error.message)
   }
+}
 
   const enviarPresupuestoPorEmail = async (presupuesto) => {
     try {
@@ -523,28 +532,39 @@ ${config?.telefono ? `📞 ${config.telefono}` : ''}`
   }
 
   const enviarReciboPorWhatsApp = async (pago) => {
-    try {
-      if (!paciente.telefono) {
-        alert('⚠️ Este paciente no tiene teléfono registrado')
-        return
-      }
+  try {
+    if (!paciente.telefono) {
+      alert('⚠️ Este paciente no tiene teléfono registrado')
+      return
+    }
 
-      // Cargar configuración de la clínica
-      const { data: { user } } = await supabase.auth.getUser()
-      const { data: config } = await supabase
-        .from('configuracion_clinica')
-        .select('*')
-        .eq('dentista_id', user.id)
-        .single()
+    // Cargar configuración de la clínica
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      alert('⚠️ Error: No se pudo obtener el usuario')
+      return
+    }
 
-      // Formatear teléfono
-      let telefono = paciente.telefono.replace(/[^0-9]/g, '')
-      if (!telefono.startsWith('595')) {
-        telefono = '595' + telefono
-      }
+    const { data: configData, error: configError } = await supabase
+      .from('configuracion_clinica')
+      .select('*')
+      .eq('dentista_id', user.id)
+      .single()
 
-      // Construir mensaje de WhatsApp
-      const mensaje = `Hola ${paciente.nombre},
+    // ✅ Usar la variable correcta
+    const config = configData
+
+    // Formatear teléfono
+    let telefono = paciente.telefono.replace(/[^0-9]/g, '')
+    if (!telefono.startsWith('595')) {
+      telefono = '595' + telefono
+    }
+
+    // Construir mensaje
+    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
+    
+    const mensaje = `Hola ${paciente.nombre},
 
 🧾 *RECIBO DE PAGO*
 
@@ -560,21 +580,20 @@ ${pago.notas ? `\n_Notas: ${pago.notas}_` : ''}
 ✅ Gracias por su pago.
 
 Saludos,
-*${config?.nombre_comercial || config?.razon_social || 'Clínica Dental'}*
+*${nombreClinica}*
 ${config?.telefono ? `📞 ${config.telefono}` : ''}`
 
-      // Abrir WhatsApp Web
-      const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-      window.open(url, '_blank')
+    // Abrir WhatsApp Web
+    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
+    window.open(url, '_blank')
 
-      console.log('✅ WhatsApp abierto con recibo')
+    console.log('✅ WhatsApp abierto con recibo')
 
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Error al abrir WhatsApp: ' + error.message)
-    }
+  } catch (error) {
+    console.error('Error completo:', error)
+    alert('Error al abrir WhatsApp: ' + error.message)
   }
-
+}
   const eliminarPago = async (pagoId, numeroRecibo) => {
     const confirmacion = window.confirm(
       `⚠️ ¿Estás seguro de eliminar el pago ${numeroRecibo}?\n\nEsta acción no se puede deshacer.`
