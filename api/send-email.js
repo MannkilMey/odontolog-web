@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const RESEND_API_KEY = process.env.VITE_RESEND_API_KEY
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY  // ← CAMBIO AQUÍ
 
 export default async function handler(req, res) {
   // Solo permitir POST
@@ -27,8 +27,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Faltan datos requeridos' })
     }
 
-    // Crear cliente de Supabase
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    // Crear cliente de Supabase con SERVICE ROLE (bypasea RLS)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
     // 1. Registrar en base de datos
     const { data: registro, error: dbError } = await supabase
@@ -51,7 +51,10 @@ export default async function handler(req, res) {
 
     if (dbError) {
       console.error('DB Error:', dbError)
-      throw new Error('Error al registrar en base de datos')
+      return res.status(500).json({ 
+        error: 'Error al registrar en base de datos',
+        details: dbError.message 
+      })
     }
 
     // 2. Enviar con Resend
