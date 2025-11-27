@@ -648,5 +648,11 @@ const styles = {
     color: '#9ca3af',
     minWidth: '24px',
   },
+  sectionSubtitle: {
+  fontSize: '14px',
+  color: '#6b7280',
+  marginBottom: '16px',
+  marginTop: '-8px',
+},
 
 }
