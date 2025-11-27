@@ -94,6 +94,35 @@ export default function ConfiguracionNotificacionesScreen() {
     }
   }
 
+  // ============================================
+  // COMPONENTE SWITCH REUTILIZABLE
+  // ============================================
+  const Switch = ({ checked, onChange }) => {
+    return (
+      <label style={styles.switchContainer}>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          style={{ display: 'none' }}
+        />
+        <div 
+          style={{
+            ...styles.switchTrack,
+            backgroundColor: checked ? '#10b981' : '#cbd5e1'
+          }}
+        >
+          <div 
+            style={{
+              ...styles.switchThumb,
+              transform: checked ? 'translateX(26px)' : 'translateX(0)',
+            }}
+          />
+        </div>
+      </label>
+    )
+  }
+
   if (loading) {
     return (
       <div style={styles.container}>
@@ -120,14 +149,10 @@ export default function ConfiguracionNotificacionesScreen() {
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>🔔 Recordatorios de Citas</div>
-            <label style={styles.switch}>
-              <input
-                type="checkbox"
-                checked={config.recordatorios_activos}
-                onChange={(e) => setConfig({ ...config, recordatorios_activos: e.target.checked })}
-              />
-              <span style={styles.slider}></span>
-            </label>
+            <Switch
+              checked={config.recordatorios_activos}
+              onChange={(e) => setConfig({ ...config, recordatorios_activos: e.target.checked })}
+            />
           </div>
 
           {config.recordatorios_activos && (
@@ -185,14 +210,10 @@ export default function ConfiguracionNotificacionesScreen() {
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>✅ Confirmaciones de Citas</div>
-            <label style={styles.switch}>
-              <input
-                type="checkbox"
-                checked={config.confirmaciones_activas}
-                onChange={(e) => setConfig({ ...config, confirmaciones_activas: e.target.checked })}
-              />
-              <span style={styles.slider}></span>
-            </label>
+            <Switch
+              checked={config.confirmaciones_activas}
+              onChange={(e) => setConfig({ ...config, confirmaciones_activas: e.target.checked })}
+            />
           </div>
 
           {config.confirmaciones_activas && (
@@ -229,14 +250,10 @@ export default function ConfiguracionNotificacionesScreen() {
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>🧾 Recibos de Pago</div>
-            <label style={styles.switch}>
-              <input
-                type="checkbox"
-                checked={config.recibos_automaticos}
-                onChange={(e) => setConfig({ ...config, recibos_automaticos: e.target.checked })}
-              />
-              <span style={styles.slider}></span>
-            </label>
+            <Switch
+              checked={config.recibos_automaticos}
+              onChange={(e) => setConfig({ ...config, recibos_automaticos: e.target.checked })}
+            />
           </div>
 
           {config.recibos_automaticos && (
@@ -273,14 +290,10 @@ export default function ConfiguracionNotificacionesScreen() {
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>📄 Recordatorios de Presupuestos</div>
-            <label style={styles.switch}>
-              <input
-                type="checkbox"
-                checked={config.presupuestos_recordatorio_activo}
-                onChange={(e) => setConfig({ ...config, presupuestos_recordatorio_activo: e.target.checked })}
-              />
-              <span style={styles.slider}></span>
-            </label>
+            <Switch
+              checked={config.presupuestos_recordatorio_activo}
+              onChange={(e) => setConfig({ ...config, presupuestos_recordatorio_activo: e.target.checked })}
+            />
           </div>
 
           {config.presupuestos_recordatorio_activo && (
@@ -434,22 +447,32 @@ const styles = {
     color: '#374151',
     cursor: 'pointer',
   },
-  switch: {
+  // ✅ ESTILOS DEL SWITCH
+  switchContainer: {
     position: 'relative',
     display: 'inline-block',
     width: '50px',
     height: '24px',
-  },
-  slider: {
-    position: 'absolute',
     cursor: 'pointer',
+  },
+  switchTrack: {
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#cbd5e1',
-    transition: '0.4s',
     borderRadius: '24px',
+    transition: 'background-color 0.3s ease',
+  },
+  switchThumb: {
+    position: 'absolute',
+    height: '18px',
+    width: '18px',
+    left: '3px',
+    bottom: '3px',
+    backgroundColor: '#ffffff',
+    borderRadius: '50%',
+    transition: 'transform 0.3s ease',
   },
   saveButton: {
     width: '100%',
