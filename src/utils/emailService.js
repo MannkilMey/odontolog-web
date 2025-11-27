@@ -52,71 +52,34 @@ export const enviarEmail = async ({
   metadata = {}
 }) => {
   try {
-    // 1. Obtener dentista actual
+    // Obtener dentista actual
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Usuario no autenticado')
 
-    // 2. Registrar intento en DB (estado: pendiente)
-    const { data: registro, error: dbError } = await supabase
-      .from('mensajes_enviados')
-      .insert({
-        dentista_id: user.id,
-        paciente_id: pacienteId,
-        tipo: tipo,
-        canal: 'email',
-        destinatario: destinatario,
-        asunto: asunto,
-        mensaje: html.substring(0, 1000), // Solo primeros 1000 chars
-        estado: 'pendiente',
-        metadata: metadata,
-        costo_unitario: 0, // Gratis hasta 3000/mes con Resend
-        fecha_programado: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (dbError) throw dbError
-
-    // 3. Enviar email con Resend
-    const response = await fetch('https://api.resend.com/emails', {
+    // Llamar a la serverless function
+    const response = await fetch('/api/send-email', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'OdontoLog <no-reply@odontolog.lat>',
-        to: [destinatario],
-        subject: asunto,
-        html: html
+        destinatario,
+        asunto,
+        html,
+        tipo,
+        pacienteId,
+        metadata,
+        dentistaId: user.id
       })
     })
 
     const result = await response.json()
 
-    // 4. Actualizar estado en DB
-    if (response.ok) {
-      await supabase
-        .from('mensajes_enviados')
-        .update({
-          estado: 'enviado',
-          fecha_enviado: new Date().toISOString()
-        })
-        .eq('id', registro.id)
-
-      return { success: true, messageId: result.id, registroId: registro.id }
-    } else {
-      // Error al enviar
-      await supabase
-        .from('mensajes_enviados')
-        .update({
-          estado: 'fallido',
-          error_mensaje: result.message || 'Error desconocido'
-        })
-        .eq('id', registro.id)
-
-      throw new Error(result.message || 'Error al enviar email')
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al enviar email')
     }
+
+    return result
 
   } catch (error) {
     console.error('Error en enviarEmail:', error)
