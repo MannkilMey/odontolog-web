@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const RESEND_API_KEY = process.env.VITE_RESEND_API_KEY
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY  // ← CAMBIO AQUÍ
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export default async function handler(req, res) {
   // Solo permitir POST
@@ -29,6 +29,16 @@ export default async function handler(req, res) {
 
     // Crear cliente de Supabase con SERVICE ROLE (bypasea RLS)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+    // ✅ NUEVO: Cargar configuración de la clínica
+    const { data: config } = await supabase
+      .from('configuracion_clinica')
+      .select('nombre_comercial, razon_social')
+      .eq('dentista_id', dentistaId)
+      .single()
+
+    // Determinar nombre para el remitente (con fallback a OdontoLog)
+    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'OdontoLog'
 
     // 1. Registrar en base de datos
     const { data: registro, error: dbError } = await supabase
@@ -57,7 +67,7 @@ export default async function handler(req, res) {
       })
     }
 
-    // 2. Enviar con Resend
+    // 2. Enviar con Resend usando nombre dinámico
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -65,7 +75,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'OdontoLog <no-reply@odontolog.lat>',
+        from: `${nombreClinica} <no-reply@odontolog.lat>`,  // ← DINÁMICO
         to: [destinatario],
         subject: asunto,
         html: html
