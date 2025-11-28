@@ -10,8 +10,9 @@ export default function ConfiguracionNotificacionesScreen() {
     // Recordatorios
     recordatorios_activos: true,
     recordatorios_dias_anticipacion: 1,
-    recordatorios_hora_envio: '09:00',
+    recordatorios_hora_envio: '07:00',
     recordatorios_canales: ['email', 'whatsapp'],
+    zona_horaria: 'America/Asuncion', // ✅ NUEVO
     
     // Confirmaciones
     confirmaciones_activas: true,
@@ -45,7 +46,11 @@ export default function ConfiguracionNotificacionesScreen() {
       }
 
       if (data) {
-        setConfig(data)
+        setConfig({
+          ...data,
+          // Asegurar que zona_horaria tenga un valor por defecto
+          zona_horaria: data.zona_horaria || 'America/Asuncion'
+        })
       }
     } catch (error) {
       console.error('Error:', error)
@@ -179,6 +184,68 @@ export default function ConfiguracionNotificacionesScreen() {
                   value={config.recordatorios_hora_envio}
                   onChange={(e) => setConfig({ ...config, recordatorios_hora_envio: e.target.value })}
                 />
+              </div>
+
+              {/* ✅ NUEVA SECCIÓN: ZONA HORARIA */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Zona Horaria:</label>
+                <select
+                  style={styles.select}
+                  value={config.zona_horaria}
+                  onChange={(e) => setConfig({ ...config, zona_horaria: e.target.value })}
+                >
+                  <optgroup label="🇵🇾 Paraguay">
+                    <option value="America/Asuncion">Paraguay (GMT-4/-3)</option>
+                  </optgroup>
+                  <optgroup label="🇦🇷 Argentina">
+                    <option value="America/Argentina/Buenos_Aires">Buenos Aires (GMT-3)</option>
+                    <option value="America/Argentina/Cordoba">Córdoba (GMT-3)</option>
+                    <option value="America/Argentina/Mendoza">Mendoza (GMT-3)</option>
+                  </optgroup>
+                  <optgroup label="🇧🇷 Brasil">
+                    <option value="America/Sao_Paulo">São Paulo (GMT-3)</option>
+                    <option value="America/Rio_Branco">Rio Branco (GMT-5)</option>
+                    <option value="America/Manaus">Manaus (GMT-4)</option>
+                  </optgroup>
+                  <optgroup label="🇺🇾 Uruguay">
+                    <option value="America/Montevideo">Montevideo (GMT-3)</option>
+                  </optgroup>
+                  <optgroup label="🇨🇱 Chile">
+                    <option value="America/Santiago">Santiago (GMT-4/-3)</option>
+                  </optgroup>
+                  <optgroup label="🇵🇪 Perú">
+                    <option value="America/Lima">Lima (GMT-5)</option>
+                  </optgroup>
+                  <optgroup label="🇧🇴 Bolivia">
+                    <option value="America/La_Paz">La Paz (GMT-4)</option>
+                  </optgroup>
+                  <optgroup label="🇨🇴 Colombia">
+                    <option value="America/Bogota">Bogotá (GMT-5)</option>
+                  </optgroup>
+                  <optgroup label="🇻🇪 Venezuela">
+                    <option value="America/Caracas">Caracas (GMT-4)</option>
+                  </optgroup>
+                  <optgroup label="🇪🇨 Ecuador">
+                    <option value="America/Guayaquil">Guayaquil (GMT-5)</option>
+                  </optgroup>
+                  <optgroup label="🇲🇽 México">
+                    <option value="America/Mexico_City">Ciudad de México (GMT-6/-5)</option>
+                    <option value="America/Cancun">Cancún (GMT-5)</option>
+                  </optgroup>
+                  <optgroup label="🇺🇸 Estados Unidos">
+                    <option value="America/New_York">New York (GMT-5/-4)</option>
+                    <option value="America/Chicago">Chicago (GMT-6/-5)</option>
+                    <option value="America/Denver">Denver (GMT-7/-6)</option>
+                    <option value="America/Los_Angeles">Los Angeles (GMT-8/-7)</option>
+                    <option value="America/Phoenix">Phoenix (GMT-7)</option>
+                  </optgroup>
+                  <optgroup label="🇪🇸 España">
+                    <option value="Europe/Madrid">Madrid (GMT+1/+2)</option>
+                  </optgroup>
+                </select>
+                <p style={styles.helper}>
+                  Los recordatorios se enviarán a las <strong>{config.recordatorios_hora_envio}</strong> según tu zona horaria local
+                </p>
               </div>
 
               <div style={styles.formGroup}>
@@ -447,7 +514,15 @@ const styles = {
     color: '#374151',
     cursor: 'pointer',
   },
-  // ✅ ESTILOS DEL SWITCH
+  // ✅ NUEVO: Helper text
+  helper: {
+    fontSize: '12px',
+    color: '#9ca3af',
+    marginTop: '6px',
+    fontStyle: 'italic',
+    lineHeight: '1.4',
+  },
+  // ESTILOS DEL SWITCH
   switchContainer: {
     position: 'relative',
     display: 'inline-block',

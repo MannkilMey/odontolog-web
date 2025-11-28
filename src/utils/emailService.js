@@ -56,6 +56,12 @@ export const enviarEmail = async ({
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('Usuario no autenticado')
 
+    // ✅ NUEVO: Verificar límite ANTES de enviar
+    const limiteCheck = await verificarLimiteMensajes()
+    if (!limiteCheck.permitido) {
+      throw new Error(limiteCheck.mensaje)
+    }
+
     // Llamar a la serverless function
     const response = await fetch('/api/send-email', {
       method: 'POST',
@@ -78,6 +84,9 @@ export const enviarEmail = async ({
     if (!response.ok) {
       throw new Error(result.error || 'Error al enviar email')
     }
+
+    // ✅ NUEVO: Incrementar contador después de envío exitoso
+    await incrementarContadorMensajes()
 
     return result
 
