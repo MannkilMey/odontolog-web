@@ -68,14 +68,23 @@ export default function RegistrarPagoScreen() {
       // Cargar presupuestos del paciente
       const { data: presupuestosData, error: presupuestosError } = await supabase
         .from('presupuestos')
-        .select('*')
+        .select(`
+          *,
+          pagos:pagos_pacientes(monto)
+        `)
         .eq('paciente_id', pacienteId)
+        .in('estado', ['pendiente', 'aprobado'])
         .order('fecha_emision', { ascending: false })
 
-      if (!presupuestosError) {
-        setPresupuestos(presupuestosData || [])
+      if (!presupuestosError && presupuestosData) {
+        // Filtrar solo presupuestos con saldo pendiente > 0
+        const presupuestosConSaldo = presupuestosData.filter(pres => {
+          const totalPagado = pres.pagos?.reduce((sum, p) => sum + p.monto, 0) || 0
+          const saldoPendiente = pres.total - totalPagado
+          return saldoPendiente > 0
+        })
+        setPresupuestos(presupuestosConSaldo)
       }
-
       // Cargar procedimientos del paciente
       const { data: procedimientosData, error: procedimientosError } = await supabase
         .from('procedimientos_dentales')
@@ -221,6 +230,31 @@ export default function RegistrarPagoScreen() {
 
       if (ingresoError) {
         console.error('Error registrando ingreso:', ingresoError)
+      }
+      if (formData.presupuesto_id) {
+        const { data: pagosPresupuesto } = await supabase
+          .from('pagos_pacientes')
+          .select('monto')
+          .eq('presupuesto_id', formData.presupuesto_id)
+
+        const totalPagado = pagosPresupuesto?.reduce((sum, p) => sum + p.monto, 0) || 0
+
+        const { data: presupuestoData } = await supabase
+          .from('presupuestos')
+          .select('total')
+          .eq('id', formData.presupuesto_id)
+          .single()
+
+        if (presupuestoData && totalPagado >= presupuestoData.total) {
+          // Marcar como completado
+          await supabase
+            .from('presupuestos')
+            .update({ 
+              estado: 'aprobado',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', formData.presupuesto_id)
+        }
       }
 
       // ✅ NUEVO: Guardar pago y abrir modal
