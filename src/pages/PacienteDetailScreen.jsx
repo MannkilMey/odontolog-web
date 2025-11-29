@@ -166,7 +166,7 @@ export default function PacienteDetailScreen() {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No especificado'
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    return new Date(dateString + 'T12:00:00').toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -175,7 +175,7 @@ export default function PacienteDetailScreen() {
 
   const formatDateTime = (dateString) => {
     if (!dateString) return 'No especificado'
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    return new Date(dateString + 'T12:00:00').toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
