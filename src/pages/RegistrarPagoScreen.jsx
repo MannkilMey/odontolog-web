@@ -381,19 +381,43 @@ export default function RegistrarPagoScreen() {
     `
 
     // Enviar email vía Resend
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: `${nombreClinica} <no-reply@odontolog.lat>`,
-        to: [paciente.email],
-        subject: `🧾 Recibo de Pago - ${pago.numero_recibo}`,
-        html: html
-      })
-    })
+    // Enviar email vía Edge Function
+    const resendResponse = await fetch(
+      'https://fuwrayxwjldtawtsljro.supabase.co/functions/v1/enviar-recibo-email',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nombreClinica,
+          paciente: {
+            nombre: paciente.nombre,
+            apellido: paciente.apellido,
+            email: paciente.email,
+            documento: paciente.documento,
+            id: paciente.id
+          },
+          pago: {
+            numero_recibo: pago.numero_recibo,
+            monto: pago.monto,
+            fecha_pago: pago.fecha_pago,
+            metodo_pago: pago.metodo_pago,
+            concepto: pago.concepto,
+            notas: pago.notas,
+            id: pago.id
+          },
+          config: {
+            simbolo_moneda: config.simbolo_moneda,
+            direccion: config.direccion,
+            telefono: config.telefono,
+            email: config.email
+          },
+          html: html
+        })
+      }
+    )
 
     const resendResult = await resendResponse.json()
 
