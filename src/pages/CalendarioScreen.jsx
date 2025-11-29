@@ -100,7 +100,7 @@ export default function CalendarioScreen() {
   }
 
   const formatDateDisplay = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+  return new Date(dateString + 'T12:00:00').toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -171,7 +171,7 @@ export default function CalendarioScreen() {
 
       const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
 
-      const fechaCita = new Date(cita.fecha_cita)
+      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
       const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
         weekday: 'long',
         day: 'numeric',
@@ -279,7 +279,7 @@ export default function CalendarioScreen() {
         telefono = '595' + telefono
       }
 
-      const fechaCita = new Date(cita.fecha_cita)
+      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
       const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
         weekday: 'long',
         day: 'numeric',
