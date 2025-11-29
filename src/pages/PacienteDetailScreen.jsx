@@ -102,10 +102,13 @@ export default function PacienteDetailScreen() {
         setTodasLasCitas(todasCitasData || [])
       }
 
-      // Cargar presupuestos
+      // ✅ MODIFICADO: Cargar presupuestos con sus pagos
       const { data: presupuestosData, error: presupuestosError } = await supabase
         .from('presupuestos')
-        .select('*')
+        .select(`
+          *,
+          pagos:pagos_pacientes(monto)
+        `)
         .eq('paciente_id', pacienteId)
         .order('fecha_emision', { ascending: false })
         .limit(5)
@@ -594,6 +597,7 @@ ${config?.telefono ? `📞 ${config.telefono}` : ''}`
     alert('Error al abrir WhatsApp: ' + error.message)
   }
 }
+
   const eliminarPago = async (pagoId, numeroRecibo) => {
     const confirmacion = window.confirm(
       `⚠️ ¿Estás seguro de eliminar el pago ${numeroRecibo}?\n\nEsta acción no se puede deshacer.`
@@ -929,26 +933,76 @@ ${config?.telefono ? `📞 ${config.telefono}` : ''}`
                   vencido: '#6b7280'
                 }
                 
+                // ✅ CALCULAR SALDO PENDIENTE
+                const totalPagado = pres.pagos?.reduce((sum, p) => sum + p.monto, 0) || 0
+                const saldoPendiente = pres.total - totalPagado
+                const estaPagado = saldoPendiente <= 0
+                
                 return (
                   <div key={index} style={styles.presupuestoItem}>
                     <div style={styles.presupuestoHeader}>
                       <div style={styles.presupuestoNumero}>
                         {pres.numero_presupuesto}
                       </div>
-                      <div style={{
-                        ...styles.presupuestoEstado,
-                        backgroundColor: estadoColors[pres.estado] || '#6b7280'
-                      }}>
-                        {pres.estado}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* Badge de estado */}
+                        <div style={{
+                          ...styles.presupuestoEstado,
+                          backgroundColor: estadoColors[pres.estado] || '#6b7280'
+                        }}>
+                          {pres.estado}
+                        </div>
+                        
+                        {/* ✅ Badge PAGADO */}
+                        {estaPagado && (
+                          <div style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: '#ffffff',
+                            textTransform: 'uppercase',
+                            backgroundColor: '#059669'
+                          }}>
+                            ✅ PAGADO
+                          </div>
+                        )}
                       </div>
                     </div>
+                    
                     <div style={styles.presupuestoFecha}>
                       Emitido: {formatDate(pres.fecha_emision)}
                       {pres.fecha_vencimiento && ` • Válido hasta: ${formatDate(pres.fecha_vencimiento)}`}
                     </div>
+                    
                     <div style={styles.presupuestoTotal}>
                       Total: Gs. {Number(pres.total).toLocaleString('es-PY')}
                     </div>
+                    
+                    {/* ✅ MOSTRAR PAGOS Y SALDO */}
+                    {totalPagado > 0 && (
+                      <>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#10b981',
+                          fontWeight: '600',
+                          marginTop: '4px'
+                        }}>
+                          Pagado: Gs. {totalPagado.toLocaleString('es-PY')}
+                        </div>
+                        {!estaPagado && (
+                          <div style={{
+                            fontSize: '14px',
+                            color: '#f59e0b',
+                            fontWeight: '600',
+                            marginTop: '2px'
+                          }}>
+                            Saldo pendiente: Gs. {saldoPendiente.toLocaleString('es-PY')}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
                     {pres.notas && (
                       <div style={styles.presupuestoNotas}>
                         {pres.notas}
