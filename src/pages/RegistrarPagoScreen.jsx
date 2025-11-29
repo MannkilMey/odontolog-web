@@ -3,7 +3,6 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { generarReciboPDF } from '../utils/pdfGenerator'
 
-
 export default function RegistrarPagoScreen() {
   const { pacienteId } = useParams()
   const location = useLocation()
@@ -15,6 +14,12 @@ export default function RegistrarPagoScreen() {
   const [procedimientos, setProcedimientos] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showReciboModal, setShowReciboModal] = useState(false)
+  const [pagoRegistrado, setPagoRegistrado] = useState(null)
+  const [enviarPor, setEnviarPor] = useState({
+    email: true,
+    whatsapp: false
+  })
   
   const [formData, setFormData] = useState({
     fecha_pago: new Date().toISOString().split('T')[0],
@@ -165,77 +170,322 @@ export default function RegistrarPagoScreen() {
   }
 
   const handleSave = async () => {
-  if (!validateForm()) return
+    if (!validateForm()) return
 
-  setSaving(true)
+    setSaving(true)
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    const numeroRecibo = await generateNumeroRecibo()
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const numeroRecibo = await generateNumeroRecibo()
 
-    const pagoData = {
-      dentista_id: user.id,
-      paciente_id: pacienteId,
-      numero_recibo: numeroRecibo,
-      fecha_pago: formData.fecha_pago,
-      monto: parseFloat(formData.monto),
-      metodo_pago: formData.metodo_pago,
-      concepto: formData.concepto.trim(),
-      notas: formData.notas.trim() || null,
-      presupuesto_id: formData.presupuesto_id || null,
-      procedimiento_id: formData.procedimiento_id || null,
-      documento_generado: false,
-      documento_enviado: false,
+      const pagoData = {
+        dentista_id: user.id,
+        paciente_id: pacienteId,
+        numero_recibo: numeroRecibo,
+        fecha_pago: formData.fecha_pago,
+        monto: parseFloat(formData.monto),
+        metodo_pago: formData.metodo_pago,
+        concepto: formData.concepto.trim(),
+        notas: formData.notas.trim() || null,
+        presupuesto_id: formData.presupuesto_id || null,
+        procedimiento_id: formData.procedimiento_id || null,
+        documento_generado: false,
+        documento_enviado: false,
+      }
+
+      const { data: pago, error: pagoError } = await supabase
+        .from('pagos_pacientes')
+        .insert(pagoData)
+        .select()
+        .single()
+
+      if (pagoError) throw pagoError
+
+      // Registrar en ingresos_clinica
+      const ingresoData = {
+        dentista_id: user.id,
+        paciente_id: pacienteId,
+        categoria: 'procedimiento',
+        descripcion: formData.concepto,
+        monto: parseFloat(formData.monto),
+        fecha_ingreso: formData.fecha_pago,
+        metodo_pago: formData.metodo_pago,
+        procedimiento_id: formData.procedimiento_id || null,
+        estado: 'recibido',
+        notas: formData.notas.trim() || null,
+      }
+
+      const { error: ingresoError } = await supabase
+        .from('ingresos_clinica')
+        .insert(ingresoData)
+
+      if (ingresoError) {
+        console.error('Error registrando ingreso:', ingresoError)
+      }
+
+      // ✅ NUEVO: Guardar pago y abrir modal
+      setPagoRegistrado(pago)
+      setShowReciboModal(true)
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al registrar pago: ' + error.message)
+    } finally {
+      setSaving(false)
     }
-
-    const { data: pago, error: pagoError } = await supabase
-      .from('pagos_pacientes')
-      .insert(pagoData)
-      .select()
-      .single()
-
-    if (pagoError) throw pagoError
-
-    // Registrar en ingresos_clinica
-    const ingresoData = {
-      dentista_id: user.id,
-      paciente_id: pacienteId,
-      categoria: 'procedimiento',
-      descripcion: formData.concepto,
-      monto: parseFloat(formData.monto),
-      fecha_ingreso: formData.fecha_pago,
-      metodo_pago: formData.metodo_pago,
-      procedimiento_id: formData.procedimiento_id || null,
-      estado: 'recibido',
-      notas: formData.notas.trim() || null,
-    }
-
-    const { error: ingresoError } = await supabase
-      .from('ingresos_clinica')
-      .insert(ingresoData)
-
-    if (ingresoError) {
-      console.error('Error registrando ingreso:', ingresoError)
-    }
-
-    // Preguntar si quiere descargar recibo PDF
-    const descargarPDF = window.confirm(
-      `✅ Pago registrado exitosamente\n\nRecibo: ${numeroRecibo}\n\n¿Deseas descargar el recibo en PDF ahora?`
-    )
-
-    if (descargarPDF) {
-      await generarReciboPDF(pago, paciente, config)
-    }
-
-    navigate(`/paciente/${pacienteId}`)
-
-  } catch (error) {
-    console.error('Error:', error)
-    alert('Error al registrar pago: ' + error.message)
-  } finally {
-    setSaving(false)
   }
-}
+
+  // ✅ NUEVA FUNCIÓN: Enviar recibo automático
+  const enviarReciboAutomatico = async () => {
+    try {
+      setSaving(true)
+
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Enviar por Email
+      if (enviarPor.email && paciente.email) {
+        await enviarReciboEmail(pagoRegistrado, paciente, config, user.id)
+      }
+
+      // Enviar por WhatsApp
+      if (enviarPor.whatsapp && paciente.telefono) {
+        await enviarReciboWhatsApp(pagoRegistrado, paciente, config, user.id)
+      }
+
+      // Generar PDF
+      const descargarPDF = window.confirm(
+        '✅ Recibo enviado correctamente\n\n¿Deseas descargar también el recibo en PDF?'
+      )
+
+      if (descargarPDF) {
+        await generarReciboPDF(pagoRegistrado, paciente, config)
+      }
+
+      setShowReciboModal(false)
+      navigate(`/paciente/${pacienteId}`)
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al enviar recibo: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ✅ FUNCIÓN: Enviar recibo por Email
+  const enviarReciboEmail = async (pago, paciente, config, dentistaId) => {
+    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
+    
+    const fechaPago = new Date(pago.fecha_pago + 'T12:00:00')
+    const fechaFormateada = fechaPago.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 32px;">🦷 ${nombreClinica}</h1>
+          <p style="color: #d1fae5; margin: 10px 0 0 0; font-size: 20px;">🧾 Recibo de Pago</p>
+        </div>
+        
+        <div style="padding: 40px 30px; background: white;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="display: inline-block; background: #f0fdf4; padding: 12px 24px; border-radius: 8px; border: 2px solid #10b981;">
+              <p style="margin: 0; font-size: 14px; color: #065f46; font-weight: 600;">RECIBO Nº</p>
+              <p style="margin: 4px 0 0 0; font-size: 24px; color: #059669; font-weight: 700;">${pago.numero_recibo}</p>
+            </div>
+          </div>
+
+          <h2 style="color: #1f2937; margin-bottom: 20px; font-size: 20px;">Recibimos de:</h2>
+          
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+            <p style="color: #1f2937; margin: 0; font-size: 18px; font-weight: 600;">
+              ${paciente.nombre} ${paciente.apellido || ''}
+            </p>
+            ${paciente.documento ? `<p style="color: #6b7280; margin: 8px 0 0 0; font-size: 14px;">
+              CI: ${paciente.documento}
+            </p>` : ''}
+          </div>
+
+          <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <p style="color: #065f46; margin: 5px 0;">
+              <strong>💰 Monto:</strong> ${config.simbolo_moneda} ${parseFloat(pago.monto).toLocaleString()}
+            </p>
+            <p style="color: #065f46; margin: 5px 0;">
+              <strong>📅 Fecha:</strong> ${fechaFormateada}
+            </p>
+            <p style="color: #065f46; margin: 5px 0;">
+              <strong>💳 Método de Pago:</strong> ${pago.metodo_pago.charAt(0).toUpperCase() + pago.metodo_pago.slice(1)}
+            </p>
+            <p style="color: #065f46; margin: 5px 0;">
+              <strong>📋 Concepto:</strong> ${pago.concepto}
+            </p>
+            ${pago.notas ? `<p style="color: #065f46; margin: 5px 0;">
+              <strong>📝 Notas:</strong> ${pago.notas}
+            </p>` : ''}
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">
+              <strong>${nombreClinica}</strong><br>
+              ${config?.direccion || ''}<br>
+              ${config?.telefono ? `📱 ${config.telefono}` : ''}<br>
+              ${config?.email ? `📧 ${config.email}` : ''}
+            </p>
+          </div>
+          
+          <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; text-align: center;">
+            <p style="color: #9ca3af; font-size: 11px; margin: 0;">
+              Powered by <strong>OdontoLog</strong> - Software de Gestión Dental
+            </p>
+          </div>
+        </div>
+      </div>
+    `
+
+    // Enviar email vía Resend
+    const resendResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: `${nombreClinica} <no-reply@odontolog.lat>`,
+        to: [paciente.email],
+        subject: `🧾 Recibo de Pago - ${pago.numero_recibo}`,
+        html: html
+      })
+    })
+
+    const resendResult = await resendResponse.json()
+
+    if (!resendResponse.ok) {
+      console.error('Error de Resend:', resendResult)
+      throw new Error('Error al enviar email')
+    }
+
+    // Registrar en mensajes_enviados
+    await supabase.from('mensajes_enviados').insert({
+      dentista_id: dentistaId,
+      paciente_id: paciente.id,
+      tipo: 'recibo_pago',
+      canal: 'email',
+      destinatario: paciente.email,
+      asunto: `🧾 Recibo de Pago - ${pago.numero_recibo}`,
+      mensaje: html.substring(0, 1000),
+      estado: 'enviado',
+      metadata: {
+        pago_id: pago.id,
+        numero_recibo: pago.numero_recibo,
+        monto: pago.monto,
+        automatico: false
+      },
+      fecha_enviado: new Date().toISOString()
+    })
+
+    // Incrementar contador
+    await incrementarContador(dentistaId)
+  }
+
+  // ✅ FUNCIÓN: Enviar recibo por WhatsApp
+  const enviarReciboWhatsApp = async (pago, paciente, config, dentistaId) => {
+    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
+    
+    let telefono = paciente.telefono.replace(/[^0-9]/g, '')
+    if (!telefono.startsWith('595')) {
+      telefono = '595' + telefono
+    }
+
+    const fechaPago = new Date(pago.fecha_pago + 'T12:00:00')
+    const fechaFormateada = fechaPago.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+
+    const mensaje = `Hola ${paciente.nombre},
+
+🧾 *Recibo de Pago*
+${nombreClinica}
+
+📄 Recibo Nº: *${pago.numero_recibo}*
+
+💰 Monto: ${config.simbolo_moneda} ${parseFloat(pago.monto).toLocaleString()}
+📅 Fecha: ${fechaFormateada}
+💳 Método: ${pago.metodo_pago.charAt(0).toUpperCase() + pago.metodo_pago.slice(1)}
+📋 Concepto: ${pago.concepto}
+
+¡Gracias por su pago!
+
+${config?.telefono ? `Tel: ${config.telefono}` : ''}`
+
+    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
+    window.open(url, '_blank')
+
+    // Registrar en mensajes_enviados
+    await supabase.from('mensajes_enviados').insert({
+      dentista_id: dentistaId,
+      paciente_id: paciente.id,
+      tipo: 'recibo_pago',
+      canal: 'whatsapp',
+      destinatario: paciente.telefono,
+      mensaje: mensaje,
+      estado: 'enviado',
+      metadata: {
+        pago_id: pago.id,
+        numero_recibo: pago.numero_recibo,
+        monto: pago.monto,
+        automatico: false
+      },
+      fecha_enviado: new Date().toISOString()
+    })
+
+    // Incrementar contador
+    await incrementarContador(dentistaId)
+  }
+
+  // ✅ FUNCIÓN: Incrementar contador de mensajes
+  const incrementarContador = async (dentistaId) => {
+    try {
+      const { data: suscripcion } = await supabase
+        .from('suscripciones_usuarios')
+        .select('mensajes_usados_mes, ultimo_reset_contador')
+        .eq('dentista_id', dentistaId)
+        .single()
+
+      if (!suscripcion) return
+
+      const hoy = new Date()
+      const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
+      const ultimoReset = suscripcion.ultimo_reset_contador?.split('T')[0]
+
+      if (!ultimoReset || ultimoReset < primerDiaMes) {
+        // Nuevo mes, resetear contador
+        await supabase
+          .from('suscripciones_usuarios')
+          .update({
+            mensajes_usados_mes: 1,
+            ultimo_reset_contador: new Date().toISOString()
+          })
+          .eq('dentista_id', dentistaId)
+      } else {
+        // Mismo mes, incrementar
+        await supabase
+          .from('suscripciones_usuarios')
+          .update({
+            mensajes_usados_mes: (suscripcion.mensajes_usados_mes || 0) + 1
+          })
+          .eq('dentista_id', dentistaId)
+      }
+    } catch (error) {
+      console.error('Error incrementando contador:', error)
+    }
+  }
+
   const getMetodoPagoIcon = (metodo) => {
     const icons = {
       efectivo: '💵',
@@ -414,7 +664,7 @@ export default function RegistrarPagoScreen() {
               <div style={styles.resumenRow}>
                 <span style={styles.resumenLabel}>Fecha:</span>
                 <span style={styles.resumenValue}>
-                  {new Date(formData.fecha_pago).toLocaleDateString('es-ES', {
+                  {new Date(formData.fecha_pago + 'T12:00:00').toLocaleDateString('es-ES', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
@@ -457,6 +707,99 @@ export default function RegistrarPagoScreen() {
           </div>
         </div>
       </div>
+
+      {/* ✅ MODAL DE ENVÍO DE RECIBO */}
+      {showReciboModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modal}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalTitle}>✅ Pago Registrado</div>
+              <div style={styles.modalSubtitle}>
+                Recibo Nº: {pagoRegistrado?.numero_recibo}
+              </div>
+            </div>
+
+            <div style={styles.modalBody}>
+              <p style={styles.modalText}>
+                El pago se registró correctamente.
+              </p>
+              <p style={styles.modalQuestion}>
+                ¿Deseas enviar el recibo al paciente?
+              </p>
+
+              <div style={styles.checkboxGroup}>
+                <label style={{
+                  ...styles.checkboxLabel,
+                  ...((!paciente.email) && styles.checkboxLabelDisabled)
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={enviarPor.email}
+                    onChange={(e) => setEnviarPor({ ...enviarPor, email: e.target.checked })}
+                    disabled={!paciente.email}
+                  />
+                  <span>
+                    📧 Email
+                    {paciente.email ? (
+                      <span style={styles.checkboxEmail}> ({paciente.email})</span>
+                    ) : (
+                      <span style={styles.checkboxNoDisponible}> (No disponible)</span>
+                    )}
+                  </span>
+                </label>
+
+                <label style={{
+                  ...styles.checkboxLabel,
+                  ...((!paciente.telefono) && styles.checkboxLabelDisabled)
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={enviarPor.whatsapp}
+                    onChange={(e) => setEnviarPor({ ...enviarPor, whatsapp: e.target.checked })}
+                    disabled={!paciente.telefono}
+                  />
+                  <span>
+                    📱 WhatsApp
+                    {paciente.telefono ? (
+                      <span style={styles.checkboxEmail}> ({paciente.telefono})</span>
+                    ) : (
+                      <span style={styles.checkboxNoDisponible}> (No disponible)</span>
+                    )}
+                  </span>
+                </label>
+              </div>
+
+              <div style={styles.modalWarning}>
+                💡 {enviarPor.email && enviarPor.whatsapp ? 'Enviar por ambos canales consumirá 2 mensajes de tu cuota' : 
+                     enviarPor.email || enviarPor.whatsapp ? 'Esto consumirá 1 mensaje de tu cuota mensual' :
+                     'Selecciona al menos un canal para enviar'}
+              </div>
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button
+                onClick={() => {
+                  setShowReciboModal(false)
+                  navigate(`/paciente/${pacienteId}`)
+                }}
+                style={styles.modalButtonSecondary}
+              >
+                Saltar
+              </button>
+              <button
+                onClick={enviarReciboAutomatico}
+                disabled={saving || (!enviarPor.email && !enviarPor.whatsapp)}
+                style={{
+                  ...styles.modalButtonPrimary,
+                  ...((saving || (!enviarPor.email && !enviarPor.whatsapp)) && styles.modalButtonDisabled)
+                }}
+              >
+                {saving ? 'Enviando...' : '📤 Enviar Recibo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div style={styles.footer}>
@@ -702,6 +1045,132 @@ const styles = {
   },
   saveButtonDisabled: {
     backgroundColor: '#94a3b8',
+    cursor: 'not-allowed',
+  },
+  // ✅ ESTILOS DEL MODAL
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modal: {
+    backgroundColor: '#ffffff',
+    borderRadius: '16px',
+    maxWidth: '550px',
+    width: '90%',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+  },
+  modalHeader: {
+    padding: '24px 24px 16px 24px',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  modalTitle: {
+    fontSize: '22px',
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: '4px',
+  },
+  modalSubtitle: {
+    fontSize: '14px',
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  modalBody: {
+    padding: '24px',
+  },
+  modalText: {
+    fontSize: '16px',
+    color: '#4b5563',
+    marginBottom: '8px',
+  },
+  modalQuestion: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: '16px',
+    marginTop: '16px',
+  },
+  checkboxGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '16px',
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    fontSize: '15px',
+    color: '#374151',
+    cursor: 'pointer',
+    padding: '12px',
+    backgroundColor: '#f9fafb',
+    borderRadius: '8px',
+    border: '2px solid #e5e7eb',
+    transition: 'all 0.2s',
+  },
+  checkboxLabelDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  checkboxEmail: {
+    fontSize: '13px',
+    color: '#6b7280',
+    fontWeight: '400',
+  },
+  checkboxNoDisponible: {
+    fontSize: '13px',
+    color: '#ef4444',
+    fontWeight: '500',
+  },
+  modalWarning: {
+    marginTop: '20px',
+    padding: '12px 16px',
+    backgroundColor: '#fffbeb',
+    border: '1px solid #fbbf24',
+    borderRadius: '8px',
+    fontSize: '13px',
+    color: '#92400e',
+    fontWeight: '500',
+  },
+  modalFooter: {
+    padding: '16px 24px',
+    borderTop: '1px solid #e5e7eb',
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'flex-end',
+  },
+  modalButtonSecondary: {
+    padding: '10px 20px',
+    backgroundColor: 'transparent',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#6b7280',
+    cursor: 'pointer',
+  },
+  modalButtonPrimary: {
+    padding: '10px 24px',
+    backgroundColor: '#10b981',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#ffffff',
+    cursor: 'pointer',
+  },
+  modalButtonDisabled: {
+    backgroundColor: '#9ca3af',
     cursor: 'not-allowed',
   },
   footer: {
