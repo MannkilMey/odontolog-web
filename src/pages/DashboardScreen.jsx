@@ -233,6 +233,15 @@ export default function DashboardScreen({ session }) {
             <div style={styles.mainActionTitle}>Mensajes</div>
             <div style={styles.mainActionSubtitle}>Historial de comunicaciones</div>
           </button>
+          <button 
+            type="button"
+            style={styles.mainActionCard}
+            onClick={() => navigate('/recordatorios')}
+          >
+            <div style={styles.mainActionIcon}>🔔</div>
+            <div style={styles.mainActionTitle}>Recordatorios</div>
+            <div style={styles.mainActionSubtitle}>Cuotas automáticas</div>
+          </button>
             <button 
               type="button"
               style={styles.mainActionCard}

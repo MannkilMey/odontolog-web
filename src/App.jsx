@@ -33,6 +33,7 @@ import TerminosPage from './pages/TerminosPage'
 import ForgotPasswordScreen from './pages/ForgotPasswordScreen'
 import ResetPasswordScreen from './pages/ResetPasswordScreen'
 import MensajesEnviadosScreen from './pages/MensajesEnviadosScreen'
+import RecordatoriosScreen from './pages/RecordatoriosScreen'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -244,6 +245,15 @@ function App() {
         path="/historial-financiero" 
         element={session ? <HistorialFinancieroScreen /> : <Navigate to="/login" replace />} 
       />
+      <Route 
+      path="/recordatorios" 
+      element={session ? <RecordatoriosScreen /> : <Navigate to="/login" replace />} 
+      />
+     
+      <Route 
+      path="/mensajes-enviados" 
+            element={session ? <MensajesEnviadosScreen /> : <Navigate to="/login" replace />} 
+      />
 
       {/* Configuración */}
       <Route 
@@ -262,7 +272,6 @@ function App() {
         path="/catalogo" 
         element={session ? <CatalogoProcedimientosScreen /> : <Navigate to="/login" replace />} 
       />
-      <Route path="/mensajes-enviados" element={<MensajesEnviadosScreen />} />
 
 
       {/* Redirect cualquier ruta no existente */}
