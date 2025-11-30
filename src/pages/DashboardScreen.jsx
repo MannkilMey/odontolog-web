@@ -225,6 +225,15 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionSubtitle}>Ingresos y gastos</div>
             </button>
             <button 
+            type="button"
+            style={styles.mainActionCard}
+            onClick={() => navigate('/mensajes-enviados')}
+          >
+            <div style={styles.mainActionIcon}>📬</div>
+            <div style={styles.mainActionTitle}>Mensajes</div>
+            <div style={styles.mainActionSubtitle}>Historial de comunicaciones</div>
+          </button>
+            <button 
               type="button"
               style={styles.mainActionCard}
               onClick={() => navigate('/reportes')}
