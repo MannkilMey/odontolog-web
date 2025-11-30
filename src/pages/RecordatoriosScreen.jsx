@@ -302,7 +302,7 @@ export default function RecordatoriosScreen() {
 
             <button
               style={styles.accionButton}
-              onClick={() => navigate('/planes-pago')}
+              onClick={() => navigate('/plan-pago')}
             >
               <div style={styles.accionIcon}>💳</div>
               <div style={styles.accionLabel}>Ver Planes de Pago</div>
