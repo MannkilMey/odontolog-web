@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import CitasProximasPopup from '../components/CitasProximasPopup'  // ← NUEVO
+
 
 export default function DashboardScreen({ session }) {
   const [user, setUser] = useState(null)
@@ -64,6 +66,8 @@ export default function DashboardScreen({ session }) {
 
   return (
     <div style={styles.container}>
+     {/* ✅ POPUP DE CITAS PRÓXIMAS */}
+      <CitasProximasPopup />
       {/* Header */}
       <div style={styles.header}>
         <div>
