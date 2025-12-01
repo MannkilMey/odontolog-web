@@ -273,6 +273,15 @@ export default function DashboardScreen({ session }) {
             <div style={styles.mainActionTitle}>Backups</div>
             <div style={styles.mainActionSubtitle}>Respaldo de datos</div>
           </button>
+          <button 
+            type="button"
+            style={styles.mainActionCard}
+            onClick={() => navigate('/exportar')}
+          >
+            <div style={styles.mainActionIcon}>📊</div>
+            <div style={styles.mainActionTitle}>Exportar</div>
+            <div style={styles.mainActionSubtitle}>Datos a Excel</div>
+          </button>
           </div>
         </div>
       </div>

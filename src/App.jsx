@@ -35,7 +35,7 @@ import ResetPasswordScreen from './pages/ResetPasswordScreen'
 import MensajesEnviadosScreen from './pages/MensajesEnviadosScreen'
 import RecordatoriosScreen from './pages/RecordatoriosScreen'
 import BackupsScreen from './pages/BackupsScreen'
-
+import ExportarDatosScreen from './pages/ExportarDatosScreen'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -279,6 +279,11 @@ function App() {
        element={session ?  <BackupsScreen /> : <Navigate to="/login" replace />} 
        
       />
+      <Route 
+      path="/exportar" 
+      element={session ? <ExportarDatosScreen />: <Navigate to="/login" replace />} 
+      />
+
 
       {/* Redirect cualquier ruta no existente */}
       <Route path="*" element={<Navigate to="/" replace />} />
