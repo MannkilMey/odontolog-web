@@ -34,6 +34,8 @@ import ForgotPasswordScreen from './pages/ForgotPasswordScreen'
 import ResetPasswordScreen from './pages/ResetPasswordScreen'
 import MensajesEnviadosScreen from './pages/MensajesEnviadosScreen'
 import RecordatoriosScreen from './pages/RecordatoriosScreen'
+import BackupsScreen from './pages/BackupsScreen'
+
 
 function App() {
   const [session, setSession] = useState(null)
@@ -272,7 +274,11 @@ function App() {
         path="/catalogo" 
         element={session ? <CatalogoProcedimientosScreen /> : <Navigate to="/login" replace />} 
       />
-
+      <Route 
+      path="/backups"
+       element={session ?  <BackupsScreen /> : <Navigate to="/login" replace />} 
+       
+      />
 
       {/* Redirect cualquier ruta no existente */}
       <Route path="*" element={<Navigate to="/" replace />} />

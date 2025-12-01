@@ -264,7 +264,15 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionTitle}>Métricas</div>
               <div style={styles.mainActionSubtitle}>Estadísticas y análisis</div>
             </button>
-            
+            <button 
+            type="button"
+            style={styles.mainActionCard}
+            onClick={() => navigate('/backups')}
+          >
+            <div style={styles.mainActionIcon}>💾</div>
+            <div style={styles.mainActionTitle}>Backups</div>
+            <div style={styles.mainActionSubtitle}>Respaldo de datos</div>
+          </button>
           </div>
         </div>
       </div>
