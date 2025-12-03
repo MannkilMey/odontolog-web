@@ -278,7 +278,7 @@ export default function DashboardScreen({ session }) {
             style={styles.mainActionCard}
             onClick={() => navigate('/exportar')}
           >
-            <div style={styles.mainActionIcon}>📊</div>
+            <div style={styles.mainActionIcon}>📩</div>
             <div style={styles.mainActionTitle}>Exportar</div>
             <div style={styles.mainActionSubtitle}>Datos a Excel</div>
           </button>
