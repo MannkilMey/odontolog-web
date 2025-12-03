@@ -10,9 +10,21 @@ export default function OdontogramaScreen() {
   const [paciente, setPaciente] = useState(null)
   const [estadosDientes, setEstadosDientes] = useState({})
   const [procedimientos, setProcedimientos] = useState([])
+  const [historial, setHistorial] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedDiente, setSelectedDiente] = useState(null)
   const [modalVisible, setModalVisible] = useState(false)
+  const [historialVisible, setHistorialVisible] = useState(false)
+  const [observaciones, setObservaciones] = useState('')
+  const [hoveredDiente, setHoveredDiente] = useState(null)
+
+  // Array de todos los números de dientes válidos
+  const todosDientes = [
+    18, 17, 16, 15, 14, 13, 12, 11,
+    21, 22, 23, 24, 25, 26, 27, 28,
+    31, 32, 33, 34, 35, 36, 37, 38,
+    41, 42, 43, 44, 45, 46, 47, 48
+  ]
 
   // Configuración de estados con colores mejorados
   const estadosConfig = {
@@ -156,6 +168,19 @@ export default function OdontogramaScreen() {
         setProcedimientos(procData || [])
       }
 
+      // Cargar historial
+      const { data: histData, error: histError } = await supabase
+        .from('historial_estados_dientes')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .order('fecha_cambio', { ascending: false })
+
+      if (histError) {
+        console.error('Error loading historial:', histError)
+      } else {
+        setHistorial(histData || [])
+      }
+
     } catch (error) {
       console.error('Error:', error)
     } finally {
@@ -163,14 +188,18 @@ export default function OdontogramaScreen() {
     }
   }
 
-  const updateEstadoDiente = async (numero, nuevoEstado, observaciones = '') => {
+  const updateEstadoDiente = async (numero, nuevoEstado, obs = '') => {
     try {
+      // Obtener estado anterior
+      const estadoAnterior = estadosDientes[numero]?.estado || 'sano'
+
+      // Actualizar estado actual
       const estadoData = {
         paciente_id: paciente.id,
         numero_diente: numero,
         estado: nuevoEstado,
         color_estado: estadosConfig[nuevoEstado].color,
-        observaciones,
+        observaciones: obs,
         updated_at: new Date().toISOString(),
       }
 
@@ -184,14 +213,38 @@ export default function OdontogramaScreen() {
 
       if (error) throw error
 
+      // Guardar en historial
+      const historialData = {
+        paciente_id: paciente.id,
+        numero_diente: numero,
+        estado_anterior: estadoAnterior,
+        estado_nuevo: nuevoEstado,
+        observaciones: obs,
+        fecha_cambio: new Date().toISOString()
+      }
+
+      const { error: histError } = await supabase
+        .from('historial_estados_dientes')
+        .insert(historialData)
+
+      if (histError) {
+        console.error('Error guardando historial:', histError)
+      }
+
+      // Actualizar estados locales
       setEstadosDientes(prev => ({
         ...prev,
         [numero]: data
       }))
 
+      // Recargar historial
+      await loadOdontogramaData(paciente.id)
+
       console.log('✅ Estado actualizado:', data)
       setModalVisible(false)
       setSelectedDiente(null)
+      setObservaciones('')
+
     } catch (error) {
       console.error('Error:', error)
       alert('Error al actualizar estado del diente')
@@ -207,42 +260,63 @@ export default function OdontogramaScreen() {
       otros: 0
     }
 
-    for (let i = 1; i <= 32; i++) {
-      const estado = estadosDientes[i]?.estado || 'sano'
+    // Iterar sobre TODOS los 32 dientes válidos
+    todosDientes.forEach(numero => {
+      const estado = estadosDientes[numero]?.estado || 'sano'
       if (stats.hasOwnProperty(estado)) {
         stats[estado]++
       } else {
         stats.otros++
       }
-    }
-
-    // Contar sanos (los que no tienen registro)
-    stats.sano += 32 - Object.keys(estadosDientes).length
+    })
 
     return stats
+  }
+
+  const getHistorialDiente = (numero) => {
+    return historial.filter(h => h.numero_diente === numero)
+  }
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return ''
+    return new Date(dateString).toLocaleString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const DienteComponent = ({ numero }) => {
     const estado = estadosDientes[numero]
     const config = estadosConfig[estado?.estado || 'sano']
     const hasProcedimientos = procedimientos.some(p => p.numero_diente === numero)
+    const historialDiente = getHistorialDiente(numero)
+    const isHovered = hoveredDiente === numero
     
     return (
       <div
         style={{
           ...styles.dienteContainer,
-          ...(hasProcedimientos && styles.dienteConProcedimientos)
+          ...(hasProcedimientos && styles.dienteConProcedimientos),
+          position: 'relative'
         }}
         onClick={() => {
           setSelectedDiente(numero)
           setModalVisible(true)
+          setObservaciones(estado?.observaciones || '')
         }}
+        onMouseEnter={() => setHoveredDiente(numero)}
+        onMouseLeave={() => setHoveredDiente(null)}
       >
         <div
           style={{
             ...styles.diente,
             backgroundColor: config.color,
             borderColor: config.border,
+            transform: isHovered ? 'scale(1.1)' : 'scale(1)',
+            boxShadow: isHovered ? '0 4px 12px rgba(0,0,0,0.2)' : '0 2px 4px rgba(0,0,0,0.1)',
           }}
         >
           <div style={styles.dienteNumero}>{numero}</div>
@@ -251,6 +325,36 @@ export default function OdontogramaScreen() {
           )}
         </div>
         <div style={styles.estadoLabel}>{config.emoji}</div>
+
+        {/* Tooltip */}
+        {isHovered && (
+          <div style={styles.tooltip}>
+            <div style={styles.tooltipTitle}>Diente #{numero}</div>
+            <div style={styles.tooltipRow}>
+              <span style={styles.tooltipLabel}>Estado:</span>
+              <span style={styles.tooltipValue}>{config.emoji} {config.nombre}</span>
+            </div>
+            {estado?.updated_at && (
+              <div style={styles.tooltipRow}>
+                <span style={styles.tooltipLabel}>Actualizado:</span>
+                <span style={styles.tooltipValue}>
+                  {new Date(estado.updated_at).toLocaleDateString('es-ES')}
+                </span>
+              </div>
+            )}
+            {historialDiente.length > 0 && (
+              <div style={styles.tooltipRow}>
+                <span style={styles.tooltipLabel}>Cambios:</span>
+                <span style={styles.tooltipValue}>{historialDiente.length}</span>
+              </div>
+            )}
+            {estado?.observaciones && (
+              <div style={styles.tooltipObs}>
+                📝 {estado.observaciones}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     )
   }
@@ -260,7 +364,7 @@ export default function OdontogramaScreen() {
       style={styles.estadoButton}
       onClick={() => {
         if (selectedDiente) {
-          updateEstadoDiente(selectedDiente, estado)
+          updateEstadoDiente(selectedDiente, estado, observaciones)
         }
       }}
     >
@@ -285,6 +389,7 @@ export default function OdontogramaScreen() {
   }
 
   const stats = getEstadoStats()
+  const historialDienteSeleccionado = selectedDiente ? getHistorialDiente(selectedDiente) : []
 
   return (
     <div style={styles.container}>
@@ -297,7 +402,12 @@ export default function OdontogramaScreen() {
           <div style={styles.title}>🦷 Odontograma</div>
           <div style={styles.subtitle}>{paciente.nombre} {paciente.apellido}</div>
         </div>
-        <div style={{ width: '80px' }} />
+        <button 
+          style={styles.historialButton}
+          onClick={() => setHistorialVisible(!historialVisible)}
+        >
+          📋 Historial
+        </button>
       </div>
 
       <div style={styles.content}>
@@ -322,6 +432,16 @@ export default function OdontogramaScreen() {
             <div style={styles.statEmoji}>⚫</div>
             <div style={styles.statNumber}>{stats.ausente}</div>
             <div style={styles.statLabel}>Ausentes</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statEmoji}>📊</div>
+            <div style={styles.statNumber}>{stats.otros}</div>
+            <div style={styles.statLabel}>Otros</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statEmoji}>🦷</div>
+            <div style={styles.statNumber}>32</div>
+            <div style={styles.statLabel}>Total</div>
           </div>
         </div>
 
@@ -403,6 +523,39 @@ export default function OdontogramaScreen() {
           </div>
         </div>
 
+        {/* Historial General (Panel Desplegable) */}
+        {historialVisible && historial.length > 0 && (
+          <div style={styles.historialGeneralSection}>
+            <div style={styles.historialGeneralTitle}>
+              📋 Historial Completo de Cambios ({historial.length})
+            </div>
+            <div style={styles.historialGeneralList}>
+              {historial.slice(0, 20).map((item, index) => (
+                <div key={index} style={styles.historialGeneralItem}>
+                  <div style={styles.historialGeneralHeader}>
+                    <span style={styles.historialGeneralDiente}>
+                      🦷 Diente #{item.numero_diente}
+                    </span>
+                    <span style={styles.historialGeneralFecha}>
+                      {formatDateTime(item.fecha_cambio)}
+                    </span>
+                  </div>
+                  <div style={styles.historialGeneralCambio}>
+                    {estadosConfig[item.estado_anterior]?.emoji || '⚪'} {estadosConfig[item.estado_anterior]?.nombre || 'Sano'}
+                    {' → '}
+                    {estadosConfig[item.estado_nuevo]?.emoji} {estadosConfig[item.estado_nuevo]?.nombre}
+                  </div>
+                  {item.observaciones && (
+                    <div style={styles.historialGeneralObs}>
+                      📝 {item.observaciones}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Últimos procedimientos */}
         {procedimientos.length > 0 && (
           <div style={styles.procedimientosSection}>
@@ -458,12 +611,54 @@ export default function OdontogramaScreen() {
                 Estado actual: {estadosConfig[estadosDientes[selectedDiente]?.estado || 'sano'].emoji} {estadosConfig[estadosDientes[selectedDiente]?.estado || 'sano'].nombre}
               </div>
 
+              {/* Historial del diente */}
+              {historialDienteSeleccionado.length > 0 && (
+                <div style={styles.historialDienteSection}>
+                  <div style={styles.historialDienteTitle}>
+                    📜 Historial de Cambios ({historialDienteSeleccionado.length})
+                  </div>
+                  <div style={styles.historialDienteList}>
+                    {historialDienteSeleccionado.slice(0, 3).map((item, index) => (
+                      <div key={index} style={styles.historialDienteItem}>
+                        <div style={styles.historialDienteCambio}>
+                          {estadosConfig[item.estado_anterior]?.emoji || '⚪'} {estadosConfig[item.estado_anterior]?.nombre || 'Sano'}
+                          {' → '}
+                          {estadosConfig[item.estado_nuevo]?.emoji} {estadosConfig[item.estado_nuevo]?.nombre}
+                        </div>
+                        <div style={styles.historialDienteFecha}>
+                          {formatDateTime(item.fecha_cambio)}
+                        </div>
+                        {item.observaciones && (
+                          <div style={styles.historialDienteObs}>
+                            📝 {item.observaciones}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={styles.modalSectionTitle}>Seleccionar nuevo estado:</div>
               
               <div style={styles.estadosGrid}>
                 {Object.entries(estadosConfig).map(([estado, config]) => (
                   <EstadoButton key={estado} estado={estado} config={config} />
                 ))}
+              </div>
+
+              {/* Campo de observaciones */}
+              <div style={styles.observacionesSection}>
+                <label style={styles.observacionesLabel}>
+                  📝 Observaciones (opcional):
+                </label>
+                <textarea
+                  style={styles.observacionesTextarea}
+                  placeholder="Ej: Obturación con resina compuesta, sin complicaciones..."
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  rows={3}
+                />
               </div>
             </div>
           </div>
@@ -509,6 +704,16 @@ const styles = {
     fontWeight: '500',
     cursor: 'pointer',
   },
+  historialButton: {
+    padding: '8px 16px',
+    backgroundColor: '#3b82f6',
+    border: 'none',
+    borderRadius: '8px',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
   headerInfo: {
     flex: 1,
     textAlign: 'center',
@@ -533,7 +738,7 @@ const styles = {
   },
   statsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
     gap: '16px',
     marginBottom: '32px',
   },
@@ -617,7 +822,6 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     cursor: 'pointer',
-    transition: 'transform 0.2s',
   },
   dienteConProcedimientos: {
     position: 'relative',
@@ -631,7 +835,6 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     transition: 'all 0.2s',
   },
   dienteNumero: {
@@ -649,6 +852,47 @@ const styles = {
   estadoLabel: {
     fontSize: '16px',
     marginTop: '4px',
+  },
+  tooltip: {
+    position: 'absolute',
+    bottom: '100%',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    backgroundColor: '#1f2937',
+    color: '#ffffff',
+    padding: '12px',
+    borderRadius: '8px',
+    fontSize: '12px',
+    width: '200px',
+    zIndex: 1000,
+    marginBottom: '8px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+  },
+  tooltipTitle: {
+    fontSize: '14px',
+    fontWeight: '700',
+    marginBottom: '8px',
+    borderBottom: '1px solid #374151',
+    paddingBottom: '4px',
+  },
+  tooltipRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '4px',
+  },
+  tooltipLabel: {
+    color: '#9ca3af',
+  },
+  tooltipValue: {
+    fontWeight: '600',
+  },
+  tooltipObs: {
+    marginTop: '8px',
+    paddingTop: '8px',
+    borderTop: '1px solid #374151',
+    fontSize: '11px',
+    color: '#d1d5db',
+    fontStyle: 'italic',
   },
   leyendaContainer: {
     backgroundColor: '#ffffff',
@@ -680,6 +924,60 @@ const styles = {
     fontSize: '14px',
     color: '#374151',
   },
+  historialGeneralSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    padding: '24px',
+    marginBottom: '24px',
+    border: '2px solid #3b82f6',
+  },
+  historialGeneralTitle: {
+    fontSize: '18px',
+    fontWeight: '700',
+    color: '#1e40af',
+    marginBottom: '16px',
+  },
+  historialGeneralList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    maxHeight: '400px',
+    overflowY: 'auto',
+  },
+  historialGeneralItem: {
+    backgroundColor: '#f9fafb',
+    padding: '16px',
+    borderRadius: '8px',
+    borderLeft: '3px solid #3b82f6',
+  },
+  historialGeneralHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  historialGeneralDiente: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  historialGeneralFecha: {
+    fontSize: '12px',
+    color: '#6b7280',
+  },
+  historialGeneralCambio: {
+    fontSize: '14px',
+    color: '#374151',
+    marginBottom: '4px',
+  },
+  historialGeneralObs: {
+    fontSize: '12px',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    marginTop: '8px',
+    paddingTop: '8px',
+    borderTop: '1px solid #e5e7eb',
+  },
   procedimientosSection: {
     backgroundColor: '#ffffff',
     borderRadius: '12px',
@@ -701,7 +999,7 @@ const styles = {
     backgroundColor: '#f9fafb',
     padding: '16px',
     borderRadius: '8px',
-    borderLeft: '3px solid #3b82f6',
+    borderLeft: '3px solid #10b981',
   },
   procedimientoHeader: {
     display: 'flex',
@@ -744,8 +1042,8 @@ const styles = {
     backgroundColor: '#ffffff',
     borderRadius: '16px',
     width: '90%',
-    maxWidth: '600px',
-    maxHeight: '80vh',
+    maxWidth: '700px',
+    maxHeight: '85vh',
     overflow: 'auto',
     boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
   },
@@ -777,6 +1075,48 @@ const styles = {
     color: '#6b7280',
     marginBottom: '24px',
   },
+  historialDienteSection: {
+    backgroundColor: '#eff6ff',
+    padding: '16px',
+    borderRadius: '8px',
+    marginBottom: '24px',
+    border: '1px solid #bfdbfe',
+  },
+  historialDienteTitle: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#1e40af',
+    marginBottom: '12px',
+  },
+  historialDienteList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  historialDienteItem: {
+    backgroundColor: '#ffffff',
+    padding: '12px',
+    borderRadius: '6px',
+    borderLeft: '2px solid #3b82f6',
+  },
+  historialDienteCambio: {
+    fontSize: '13px',
+    color: '#374151',
+    marginBottom: '4px',
+    fontWeight: '500',
+  },
+  historialDienteFecha: {
+    fontSize: '11px',
+    color: '#6b7280',
+  },
+  historialDienteObs: {
+    fontSize: '11px',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    marginTop: '6px',
+    paddingTop: '6px',
+    borderTop: '1px solid #e5e7eb',
+  },
   modalSectionTitle: {
     fontSize: '14px',
     fontWeight: '600',
@@ -787,6 +1127,7 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
     gap: '12px',
+    marginBottom: '24px',
   },
   estadoButton: {
     display: 'flex',
@@ -815,6 +1156,27 @@ const styles = {
     height: '8px',
     borderRadius: '4px',
     border: '1px solid',
+  },
+  observacionesSection: {
+    marginTop: '24px',
+    paddingTop: '24px',
+    borderTop: '1px solid #e5e7eb',
+  },
+  observacionesLabel: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#374151',
+    display: 'block',
+    marginBottom: '8px',
+  },
+  observacionesTextarea: {
+    width: '100%',
+    padding: '12px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    resize: 'vertical',
   },
   footer: {
     textAlign: 'center',
