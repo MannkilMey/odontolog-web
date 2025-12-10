@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import CitasProximasPopup from '../components/CitasProximasPopup'  // ← NUEVO
-
+import { useSuscripcion } from '../hooks/useSuscripcion'
+import CitasProximasPopup from '../components/CitasProximasPopup'
+import ModalUpgrade from '../components/ModalUpgrade'
 
 export default function DashboardScreen({ session }) {
   const [user, setUser] = useState(null)
@@ -13,7 +14,11 @@ export default function DashboardScreen({ session }) {
   })
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [modalUpgrade, setModalUpgrade] = useState({ isOpen: false, feature: null })
   const navigate = useNavigate()
+
+  // Hook de suscripción
+  const { plan, isPremium, isFree, tieneAcceso } = useSuscripcion(user?.id)
 
   useEffect(() => {
     console.log('Dashboard mounted, loading data...')
@@ -28,7 +33,6 @@ export default function DashboardScreen({ session }) {
 
   const getStats = async () => {
     try {
-      // Obtener total de pacientes
       const { data: pacientes, error: pacientesError } = await supabase
         .from('pacientes')
         .select('id', { count: 'exact' })
@@ -64,16 +68,44 @@ export default function DashboardScreen({ session }) {
     }
   }
 
+  // Handler para funciones restringidas
+  const handleRestrictedFeature = (feature, route) => {
+    if (!tieneAcceso(feature)) {
+      setModalUpgrade({ isOpen: true, feature: feature })
+      return
+    }
+    navigate(route)
+  }
+
+  const closeModal = () => {
+    setModalUpgrade({ isOpen: false, feature: null })
+  }
+
   return (
     <div style={styles.container}>
-     {/* ✅ POPUP DE CITAS PRÓXIMAS */}
       <CitasProximasPopup />
+      
+      {/* Modal de Upgrade */}
+      <ModalUpgrade 
+        isOpen={modalUpgrade.isOpen}
+        onClose={closeModal}
+        featureName={modalUpgrade.feature}
+      />
+
       {/* Header */}
       <div style={styles.header}>
         <div>
           <div style={styles.headerTitle}>🦷 OdontoLog</div>
           <div style={styles.headerSubtitle}>
             Bienvenido, Dr. {user?.email?.split('@')[0]}
+            {plan && (
+              <span style={{
+                ...styles.planBadge,
+                ...(isFree ? styles.planBadgeFree : isPremium ? styles.planBadgePremium : {})
+              }}>
+                {plan.nombre}
+              </span>
+            )}
           </div>
         </div>
         <div style={styles.headerButtons}>
@@ -119,19 +151,16 @@ export default function DashboardScreen({ session }) {
           </div>
         </div>
 
-        {/* Acciones Principales - Botones grandes */}
+        {/* Acciones Principales */}
         <div style={styles.mainActions}>
           <div style={styles.mainActionsTitle}>¿Qué deseas hacer?</div>
           
           <div style={styles.mainActionsGrid}>
+            {/* Botones sin restricción */}
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /clientes')
-                navigate('/clientes')
-              }}
+              onClick={() => navigate('/clientes')}
             >
               <div style={styles.mainActionIcon}>👥</div>
               <div style={styles.mainActionTitle}>Pacientes</div>
@@ -141,11 +170,7 @@ export default function DashboardScreen({ session }) {
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /agregar-paciente')
-                navigate('/agregar-paciente')
-              }}
+              onClick={() => navigate('/agregar-paciente')}
             >
               <div style={styles.mainActionIcon}>➕</div>
               <div style={styles.mainActionTitle}>Nuevo Paciente</div>
@@ -155,24 +180,17 @@ export default function DashboardScreen({ session }) {
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /calendario')
-                navigate('/calendario')
-              }}
+              onClick={() => navigate('/calendario')}
             >
               <div style={styles.mainActionIcon}>📅</div>
               <div style={styles.mainActionTitle}>Calendario</div>
               <div style={styles.mainActionSubtitle}>Gestionar citas</div>
             </button>
+
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /catalogo-procedimientos')
-                navigate('/catalogo-procedimientos')
-              }}
+              onClick={() => navigate('/catalogo-procedimientos')}
             >
               <div style={styles.mainActionIcon}>📚</div>
               <div style={styles.mainActionTitle}>Catálogo</div>
@@ -182,24 +200,17 @@ export default function DashboardScreen({ session }) {
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /gastos')
-                navigate('/gastos')
-              }}
+              onClick={() => navigate('/gastos')}
             >
               <div style={styles.mainActionIcon}>💸</div>
               <div style={styles.mainActionTitle}>Gastos</div>
               <div style={styles.mainActionSubtitle}>Registrar egresos</div>
             </button>
+
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /cuentas-por-cobrar')
-                navigate('/cuentas-por-cobrar')
-              }}
+              onClick={() => navigate('/cuentas-por-cobrar')}
             >
               <div style={styles.mainActionIcon}>💳</div>
               <div style={styles.mainActionTitle}>Cuentas por Cobrar</div>
@@ -215,6 +226,7 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionTitle}>Historial</div>
               <div style={styles.mainActionSubtitle}>Procedimientos realizados</div>
             </button>
+
             <button 
               type="button"
               style={styles.mainActionCard}
@@ -224,24 +236,27 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionTitle}>Historial $</div>
               <div style={styles.mainActionSubtitle}>Ingresos y gastos</div>
             </button>
+
             <button 
-            type="button"
-            style={styles.mainActionCard}
-            onClick={() => navigate('/mensajes-enviados')}
-          >
-            <div style={styles.mainActionIcon}>📬</div>
-            <div style={styles.mainActionTitle}>Mensajes</div>
-            <div style={styles.mainActionSubtitle}>Historial de comunicaciones</div>
-          </button>
-          <button 
-            type="button"
-            style={styles.mainActionCard}
-            onClick={() => navigate('/recordatorios')}
-          >
-            <div style={styles.mainActionIcon}>🔔</div>
-            <div style={styles.mainActionTitle}>Recordatorios</div>
-            <div style={styles.mainActionSubtitle}>Cuotas automáticas</div>
-          </button>
+              type="button"
+              style={styles.mainActionCard}
+              onClick={() => navigate('/mensajes-enviados')}
+            >
+              <div style={styles.mainActionIcon}>📬</div>
+              <div style={styles.mainActionTitle}>Mensajes</div>
+              <div style={styles.mainActionSubtitle}>Historial de comunicaciones</div>
+            </button>
+
+            <button 
+              type="button"
+              style={styles.mainActionCard}
+              onClick={() => navigate('/recordatorios')}
+            >
+              <div style={styles.mainActionIcon}>🔔</div>
+              <div style={styles.mainActionTitle}>Recordatorios</div>
+              <div style={styles.mainActionSubtitle}>Cuotas automáticas</div>
+            </button>
+
             <button 
               type="button"
               style={styles.mainActionCard}
@@ -251,37 +266,60 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionTitle}>Reportes</div>
               <div style={styles.mainActionSubtitle}>Ver análisis</div>
             </button>
-             <button 
+
+            <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={(e) => {
-                e.preventDefault()
-                console.log('🟢 Navegando a /metricas')
-                navigate('/metricas')
-              }}
+              onClick={() => navigate('/metricas')}
             >
               <div style={styles.mainActionIcon}>📊</div>
               <div style={styles.mainActionTitle}>Métricas</div>
               <div style={styles.mainActionSubtitle}>Estadísticas y análisis</div>
             </button>
+
+            {/* BOTONES PREMIUM CON RESTRICCIÓN */}
             <button 
-            type="button"
-            style={styles.mainActionCard}
-            onClick={() => navigate('/backups')}
-          >
-            <div style={styles.mainActionIcon}>💾</div>
-            <div style={styles.mainActionTitle}>Backups</div>
-            <div style={styles.mainActionSubtitle}>Respaldo de datos</div>
-          </button>
-          <button 
-            type="button"
-            style={styles.mainActionCard}
-            onClick={() => navigate('/exportar')}
-          >
-            <div style={styles.mainActionIcon}>📩</div>
-            <div style={styles.mainActionTitle}>Exportar</div>
-            <div style={styles.mainActionSubtitle}>Datos a Excel</div>
-          </button>
+              type="button"
+              style={styles.mainActionCard}
+              onClick={() => handleRestrictedFeature('backups', '/backups')}
+            >
+              <div style={styles.mainActionIcon}>💾</div>
+              <div style={styles.mainActionTitle}>
+                Backups
+                {!tieneAcceso('backups') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
+              <div style={styles.mainActionSubtitle}>Respaldo de datos</div>
+            </button>
+
+            <button 
+              type="button"
+              style={styles.mainActionCard}
+              onClick={() => handleRestrictedFeature('exportar', '/exportar')}
+            >
+              <div style={styles.mainActionIcon}>📩</div>
+              <div style={styles.mainActionTitle}>
+                Exportar
+                {!tieneAcceso('exportar') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
+              <div style={styles.mainActionSubtitle}>Datos a Excel</div>
+            </button>
+
+            {/* NUEVO: Botón de Planes */}
+            <button 
+              type="button"
+              style={{...styles.mainActionCard, ...styles.planesCard}}
+              onClick={() => navigate('/planes')}
+            >
+              <div style={styles.mainActionIcon}>⭐</div>
+              <div style={styles.mainActionTitle}>Planes</div>
+              <div style={styles.mainActionSubtitle}>
+                {isFree ? 'Mejora tu plan' : 'Gestionar suscripción'}
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -324,6 +362,24 @@ const styles = {
     fontSize: '14px',
     color: '#64748b',
     marginTop: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  planBadge: {
+    padding: '4px 12px',
+    borderRadius: '12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  planBadgeFree: {
+    backgroundColor: '#f3f4f6',
+    color: '#6b7280',
+  },
+  planBadgePremium: {
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
   },
   headerButtons: {
     display: 'flex',
@@ -341,14 +397,14 @@ const styles = {
     justifyContent: 'center',
   },
   configButton: {
-  padding: '8px 12px',
-  backgroundColor: '#6b7280',
-  borderRadius: '8px',
-  border: 'none',
-  color: '#ffffff',
-  fontSize: '16px',
-  cursor: 'pointer',
-},
+    padding: '8px 12px',
+    backgroundColor: '#6b7280',
+    borderRadius: '8px',
+    border: 'none',
+    color: '#ffffff',
+    fontSize: '16px',
+    cursor: 'pointer',
+  },
   refreshButtonDisabled: {
     backgroundColor: '#94a3b8',
     cursor: 'not-allowed',
@@ -423,6 +479,7 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    position: 'relative',
   },
   mainActionIcon: {
     fontSize: '48px',
@@ -433,11 +490,29 @@ const styles = {
     fontWeight: '700',
     color: '#1f2937',
     marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
   },
   mainActionSubtitle: {
     fontSize: '14px',
     color: '#6b7280',
     lineHeight: '1.5',
+  },
+  premiumBadge: {
+    padding: '4px 10px',
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    borderRadius: '6px',
+    fontSize: '10px',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  planesCard: {
+    border: '2px solid #3b82f6',
+    backgroundColor: '#eff6ff',
   },
   footer: {
     textAlign: 'center',
