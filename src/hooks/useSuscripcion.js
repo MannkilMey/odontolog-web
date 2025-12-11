@@ -80,21 +80,31 @@ export function useSuscripcion(userId) {
 
   // Verificar si tiene acceso a una función
   const tieneAcceso = (feature) => {
-    const accesos = {
-      'exportar': isPremium,
-      'backups': isPremium,
-      'odontograma': true, // Todos tienen acceso
-      'reportes': true,
-      'mensajes_basicos': true,
-      'mensajes_ilimitados': isPremium,
-      'pacientes_ilimitados': isPremium,
-      'soporte_prioritario': isPremium,
-      'api_access': isEnterprise,
-      'multiples_usuarios': isEnterprise,
-    }
-
-    return accesos[feature] || false
+  const accesos = {
+    // Funciones PREMIUM (requieren PRO o Enterprise)
+    'historial_procedimientos': isPremium,
+    'historial_financiero': isPremium,
+    'mensajes': isPremium,
+    'recordatorios': isPremium,
+    'reportes': isPremium,
+    'metricas': isPremium,
+    'exportar': isPremium,
+    'backups': isPremium,
+    
+    // Funciones ENTERPRISE (solo Enterprise)
+    'api_access': isEnterprise,
+    'multiples_usuarios': isEnterprise,
+    
+    // Funciones GRATUITAS (todos tienen acceso)
+    'pacientes': true,
+    'calendario': true,
+    'gastos': true,
+    'cuentas_cobrar': true,
+    'catalogo': true,
   }
+
+  return accesos[feature] || false
+}
 
   return {
     loading,

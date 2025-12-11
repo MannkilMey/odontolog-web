@@ -156,7 +156,7 @@ export default function DashboardScreen({ session }) {
           <div style={styles.mainActionsTitle}>¿Qué deseas hacer?</div>
           
           <div style={styles.mainActionsGrid}>
-            {/* Botones sin restricción */}
+            {/* ========== BOTONES GRATUITOS ========== */}
             <button 
               type="button"
               style={styles.mainActionCard}
@@ -216,68 +216,98 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionTitle}>Cuentas por Cobrar</div>
               <div style={styles.mainActionSubtitle}>Control de cobranza</div>
             </button>
-          
+
+            {/* ========== BOTONES PREMIUM (desde Historial hacia abajo) ========== */}
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={() => navigate('/historial-procedimientos')}
+              onClick={() => handleRestrictedFeature('historial_procedimientos', '/historial-procedimientos')}
             >
               <div style={styles.mainActionIcon}>🦷</div>
-              <div style={styles.mainActionTitle}>Historial</div>
+              <div style={styles.mainActionTitle}>
+                Historial
+                {!tieneAcceso('historial_procedimientos') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
               <div style={styles.mainActionSubtitle}>Procedimientos realizados</div>
             </button>
 
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={() => navigate('/historial-financiero')}
+              onClick={() => handleRestrictedFeature('historial_financiero', '/historial-financiero')}
             >
               <div style={styles.mainActionIcon}>💰</div>
-              <div style={styles.mainActionTitle}>Historial $</div>
+              <div style={styles.mainActionTitle}>
+                Historial $
+                {!tieneAcceso('historial_financiero') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
               <div style={styles.mainActionSubtitle}>Ingresos y gastos</div>
             </button>
 
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={() => navigate('/mensajes-enviados')}
+              onClick={() => handleRestrictedFeature('mensajes', '/mensajes-enviados')}
             >
               <div style={styles.mainActionIcon}>📬</div>
-              <div style={styles.mainActionTitle}>Mensajes</div>
+              <div style={styles.mainActionTitle}>
+                Mensajes
+                {!tieneAcceso('mensajes') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
               <div style={styles.mainActionSubtitle}>Historial de comunicaciones</div>
             </button>
 
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={() => navigate('/recordatorios')}
+              onClick={() => handleRestrictedFeature('recordatorios', '/recordatorios')}
             >
               <div style={styles.mainActionIcon}>🔔</div>
-              <div style={styles.mainActionTitle}>Recordatorios</div>
+              <div style={styles.mainActionTitle}>
+                Recordatorios
+                {!tieneAcceso('recordatorios') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
               <div style={styles.mainActionSubtitle}>Cuotas automáticas</div>
             </button>
 
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={() => navigate('/reportes')}
+              onClick={() => handleRestrictedFeature('reportes', '/reportes')}
             >
               <div style={styles.mainActionIcon}>📈</div>
-              <div style={styles.mainActionTitle}>Reportes</div>
+              <div style={styles.mainActionTitle}>
+                Reportes
+                {!tieneAcceso('reportes') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
               <div style={styles.mainActionSubtitle}>Ver análisis</div>
             </button>
 
             <button 
               type="button"
               style={styles.mainActionCard}
-              onClick={() => navigate('/metricas')}
+              onClick={() => handleRestrictedFeature('metricas', '/metricas')}
             >
               <div style={styles.mainActionIcon}>📊</div>
-              <div style={styles.mainActionTitle}>Métricas</div>
+              <div style={styles.mainActionTitle}>
+                Métricas
+                {!tieneAcceso('metricas') && (
+                  <span style={styles.premiumBadge}>PRO</span>
+                )}
+              </div>
               <div style={styles.mainActionSubtitle}>Estadísticas y análisis</div>
             </button>
 
-            {/* BOTONES PREMIUM CON RESTRICCIÓN */}
             <button 
               type="button"
               style={styles.mainActionCard}
@@ -308,7 +338,7 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionSubtitle}>Datos a Excel</div>
             </button>
 
-            {/* NUEVO: Botón de Planes */}
+            {/* BOTÓN DE PLANES */}
             <button 
               type="button"
               style={{...styles.mainActionCard, ...styles.planesCard}}
@@ -433,7 +463,7 @@ const styles = {
   },
   statsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmin(200px, 1fr))',
     gap: '16px',
     marginBottom: '40px',
   },
