@@ -37,7 +37,7 @@ import RecordatoriosScreen from './pages/RecordatoriosScreen'
 import BackupsScreen from './pages/BackupsScreen'
 import ExportarDatosScreen from './pages/ExportarDatosScreen'
 import PlanesScreen from './pages/PlanesScreen'
-import HistorialPagosScreen from './HistorialPagosScreen'
+import HistorialPagosScreen from './pages/HistorialPagosScreen'
 
 function App() {
   const [session, setSession] = useState(null)
