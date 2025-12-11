@@ -40,30 +40,51 @@ export default function PlanesScreen() {
   }
 
   const handleSeleccionarPlan = async (plan) => {
-    if (!user) return
+  if (!user) return
 
-    // Si ya tiene ese plan
-    if (planActual?.id === plan.id) {
-      alert('Ya tienes este plan activo')
-      return
-    }
-
-    // Si es plan FREE (downgrade)
-    if (plan.codigo === 'free') {
-      if (!window.confirm('¿Estás seguro que deseas cambiar al plan gratuito? Perderás las funciones premium.')) {
-        return
-      }
-      await cambiarPlan(plan)
-      return
-    }
-
-    // Si es upgrade a plan pago
-    if (plan.codigo === 'pro' || plan.codigo === 'enterprise') {
-      // Aquí iría la integración con pasarela de pagos
-      alert(`Para contratar el plan ${plan.nombre}, contáctanos vía WhatsApp:\n\n+595 XXX XXX XXX\n\nO envíanos un email a:\nventas@odontolog.com`)
-      return
-    }
+  // Si ya tiene ese plan
+  if (planActual?.id === plan.id) {
+    alert('Ya tienes este plan activo')
+    return
   }
+
+  // Si es plan FREE (downgrade)
+  if (plan.codigo === 'free') {
+    if (!window.confirm('¿Estás seguro que deseas cambiar al plan gratuito? Perderás las funciones premium.')) {
+      return
+    }
+    await cambiarPlan(plan)
+    return
+  }
+
+  // Si es upgrade a plan pago - MODAL CON INFO
+  if (plan.codigo === 'pro' || plan.codigo === 'enterprise') {
+    const mensaje = `
+📱 CONTRATAR PLAN ${plan.nombre.toUpperCase()}
+
+💰 Precio: Gs. ${Number(plan.precio_mensual_gs).toLocaleString('es-PY')}/mes
+
+📞 Para suscribirte, contáctanos por:
+
+WhatsApp: +595 981 XXX XXX
+Email: ventas@odontolog.com
+
+Te responderemos en menos de 1 hora con:
+✅ Datos para transferencia bancaria
+✅ Activación inmediata tras confirmar pago
+✅ Soporte para migrar tus datos
+
+¿Deseas que te contactemos?
+    `
+    
+    if (window.confirm(mensaje)) {
+      // Registrar interés en la base de datos
+      await registrarInteres(plan)
+      alert('✅ ¡Perfecto! Te contactaremos pronto.')
+    }
+    return
+  }
+}
 
   const cambiarPlan = async (nuevoPlan) => {
     try {
@@ -88,6 +109,41 @@ export default function PlanesScreen() {
       setProcesando(false)
     }
   }
+  const registrarInteres = async (plan) => {
+  try {
+    setProcesando(true)
+
+    // Obtener info del dentista
+    const { data: dentista } = await supabase
+      .from('dentistas')
+      .select('nombre, email, telefono')
+      .eq('id', user.id)
+      .single()
+
+    // Guardar el interés
+    const { data, error } = await supabase
+      .from('intereses_planes')
+      .insert({
+        dentista_id: user.id,
+        plan_id: plan.id,
+        plan_nombre: plan.nombre,
+        plan_precio: plan.precio_mensual_gs,
+        estado: 'pendiente',
+        notas: `Usuario mostró interés desde la app. Email: ${dentista?.email || user.email}`
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    console.log('✅ Interés registrado:', data)
+
+  } catch (error) {
+    console.error('Error registrando interés:', error)
+  } finally {
+    setProcesando(false)
+  }
+}
 
   const PlanCard = ({ plan, esPlanActual }) => {
     const caracteristicas = Array.isArray(plan.caracteristicas) 
@@ -207,6 +263,13 @@ export default function PlanesScreen() {
         <div style={styles.headerInfo}>
           <div style={styles.title}>⭐ Planes y Precios</div>
           <div style={styles.subtitle}>Elige el plan perfecto para tu clínica</div>
+          {/* Botón historial de pagos */}
+          <button 
+            onClick={() => navigate('/historial-pagos')}
+            style={styles.historialButton}
+          >
+            📋 Ver mis pagos
+          </button>
         </div>
         <div style={{ width: '80px' }} />
       </div>
@@ -522,4 +585,15 @@ const styles = {
     color: '#94a3b8',
     fontStyle: 'italic',
   },
+  historialButton: {
+  marginTop: '12px',
+  padding: '8px 16px',
+  backgroundColor: '#3b82f6',
+  color: '#ffffff',
+  border: 'none',
+  borderRadius: '8px',
+  fontSize: '14px',
+  fontWeight: '500',
+  cursor: 'pointer',
+},
 }

@@ -37,6 +37,7 @@ import RecordatoriosScreen from './pages/RecordatoriosScreen'
 import BackupsScreen from './pages/BackupsScreen'
 import ExportarDatosScreen from './pages/ExportarDatosScreen'
 import PlanesScreen from './pages/PlanesScreen'
+import HistorialPagosScreen from './HistorialPagosScreen'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -287,6 +288,10 @@ function App() {
       <Route 
       path="/planes" 
       element={session ? <PlanesScreen />: <Navigate to="/login" replace />} 
+      />
+      <Route 
+      path="/historial-pagos" 
+      element={session ? <HistorialPagosScreen />: <Navigate to="/login" replace />} 
       />
 
 
