@@ -462,11 +462,11 @@ const styles = {
     margin: '0 auto',
   },
   statsContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmin(200px, 1fr))',
-    gap: '16px',
-    marginBottom: '40px',
-  },
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',  // ✅ CORRECTO
+  gap: '16px',
+  marginBottom: '40px',
+},
   statCard: {
     backgroundColor: '#ffffff',
     borderRadius: '16px',
