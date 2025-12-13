@@ -12,6 +12,15 @@
     <xhtml:link rel="alternate" hreflang="pt" href="https://odontolog.lat"/>
   </url>
   
+
+  <!-- Info -->
+  <url>
+    <loc>https://odontolog.lat/info</loc>
+    <lastmod>2025-12-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
   <!-- Login -->
   <url>
     <loc>https://odontolog.lat/login</loc>
