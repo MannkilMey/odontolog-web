@@ -38,6 +38,8 @@ import BackupsScreen from './pages/BackupsScreen'
 import ExportarDatosScreen from './pages/ExportarDatosScreen'
 import PlanesScreen from './pages/PlanesScreen'
 import HistorialPagosScreen from './pages/HistorialPagosScreen'
+import AdminDashboard from './pages/AdminDashboard'
+import { useIsAdmin } from './hooks/useIsAdmin'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -293,6 +295,10 @@ function App() {
       path="/historial-pagos" 
       element={session ? <HistorialPagosScreen />: <Navigate to="/login" replace />} 
       />
+      <Route
+       path="/admin" 
+       element={session ? <AdminDashboard />: <Navigate to ="/login" replace />} 
+       />
 
 
 

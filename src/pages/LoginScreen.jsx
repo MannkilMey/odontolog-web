@@ -9,18 +9,29 @@ export default function LoginScreen({ onBack, onRegister }) {
   const [loading, setLoading] = useState(false)
 
   const handleLogin = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+  e.preventDefault()
+  setLoading(true)
 
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-    } catch (error) {
-      alert(error.message)
-    } finally {
-      setLoading(false)
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    })
+    
+    if (error) throw error
+
+    // Verificar si es admin
+    if (data.user.email === 'president@odontolog.lat') {
+      navigate('/admin')
+    } else {
+      navigate('/dashboard')
     }
+  } catch (error) {
+    alert(error.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>

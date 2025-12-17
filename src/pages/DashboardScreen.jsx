@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useSuscripcion } from '../hooks/useSuscripcion'
 import CitasProximasPopup from '../components/CitasProximasPopup'
 import ModalUpgrade from '../components/ModalUpgrade'
+import { useActivityTracker } from '../hooks/useActivityTracker'
 
 export default function DashboardScreen({ session }) {
   const [user, setUser] = useState(null)
@@ -19,7 +20,9 @@ export default function DashboardScreen({ session }) {
 
   // Hook de suscripción
   const { plan, isPremium, isFree, tieneAcceso } = useSuscripcion(user?.id)
-
+  // Tracking de actividad
+  useActivityTracker(user?.id)
+  
   useEffect(() => {
     console.log('Dashboard mounted, loading data...')
     getProfile()
