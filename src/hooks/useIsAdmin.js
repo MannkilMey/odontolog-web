@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+
 export function useIsAdmin() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -26,7 +29,6 @@ export function useIsAdmin() {
       // Verificar si el email es el admin
       const isAdminUser = user.email === 'president@odontolog.lat'
       console.log('🔍 useIsAdmin: ¿Es admin?', isAdminUser)
-      console.log('🔍 useIsAdmin: Comparación:', user.email, '===', 'president@odontolog.lat')
       
       setIsAdmin(isAdminUser)
       
