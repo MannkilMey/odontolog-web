@@ -20,10 +20,15 @@ export default function LoginScreen({ onBack, onRegister }) {
     
     if (error) throw error
 
+    console.log('🔐 Usuario logueado:', data.user.email)
+    console.log('🔐 Es president?', data.user.email === 'president@odontolog.lat')
+
     // Verificar si es admin
     if (data.user.email === 'president@odontolog.lat') {
+      console.log('✅ Redirigiendo a /admin')
       navigate('/admin')
     } else {
+      console.log('➡️ Redirigiendo a /dashboard')
       navigate('/dashboard')
     }
   } catch (error) {
