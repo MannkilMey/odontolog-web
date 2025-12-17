@@ -65,7 +65,7 @@ export default function AdminDashboard() {
       // Total usuarios
       const { data: allUsers } = await supabase
         .from('dentistas')
-        .select('id, created_at, pais')
+        .select('id, created_at')
       
       // Usuarios con actividad reciente (últimos 30 días)
       const { data: activeUsers } = await supabase
@@ -80,21 +80,13 @@ export default function AdminDashboard() {
         .eq('estado', 'activa')
         .in('plan.codigo', ['pro', 'enterprise'])
 
-      // Por país
-      const paisCount = { PY: 0, BR: 0, AR: 0, otros: 0 }
-      allUsers?.forEach(user => {
-        const pais = user.pais?.toUpperCase()
-        if (pais === 'PY' || pais === 'PARAGUAY') paisCount.PY++
-        else if (pais === 'BR' || pais === 'BRASIL' || pais === 'BRAZIL') paisCount.BR++
-        else if (pais === 'AR' || pais === 'ARGENTINA') paisCount.AR++
-        else paisCount.otros++
-      })
+      
 
       setStats({
         totalUsuarios: allUsers?.length || 0,
         usuariosActivos: activeUsers?.length || 0,
         usuariosPremium: premiumUsers?.length || 0,
-        usuariosPorPais: paisCount
+        usuariosPorPais: { PY: 0, BR: 0, AR: 0, otros: 0 }
       })
     } catch (error) {
       console.error('Error loading stats:', error)
@@ -102,50 +94,50 @@ export default function AdminDashboard() {
   }
 
   const loadUsuarios = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('dentistas')
-        .select(`
+  try {
+    const { data, error } = await supabase
+      .from('dentistas')
+      .select(`
+        id,
+        email,
+        nombre,
+        telefono,
+        created_at,
+        suscripcion:suscripciones_usuarios(
           id,
-          email,
-          nombre,
-          telefono,
-          pais,
-          created_at,
-          suscripcion:suscripciones_usuarios(
-            id,
-            estado,
-            plan:plan_id(id, nombre, codigo)
-          ),
-          actividad:usuarios_actividad(
-            ultima_actividad
-          )
-        `)
-        .order('created_at', { ascending: false })
+          estado,
+          plan:plan_id(id, nombre, codigo)
+        ),
+        actividad:usuarios_actividad(
+          ultima_actividad
+        )
+      `)
+      .order('created_at', { ascending: false })
 
-      if (error) throw error
+    if (error) throw error
 
-      const usuariosConEstado = data.map(user => {
-        const ultimaActividad = user.actividad?.[0]?.ultima_actividad
-        const diasInactivo = ultimaActividad 
-          ? Math.floor((Date.now() - new Date(ultimaActividad).getTime()) / (1000 * 60 * 60 * 24))
-          : 999
+    const usuariosConEstado = data.map(user => {
+      const ultimaActividad = user.actividad?.[0]?.ultima_actividad
+      const diasInactivo = ultimaActividad 
+        ? Math.floor((Date.now() - new Date(ultimaActividad).getTime()) / (1000 * 60 * 60 * 24))
+        : 999
 
-        return {
-          ...user,
-          planActual: user.suscripcion?.[0]?.plan?.nombre || 'Sin plan',
-          planCodigo: user.suscripcion?.[0]?.plan?.codigo || 'free',
-          estadoSuscripcion: user.suscripcion?.[0]?.estado || 'inactiva',
-          diasInactivo: diasInactivo,
-          esActivo: diasInactivo <= 30
-        }
-      })
+      return {
+        ...user,
+        pais: '-', // ← VALOR POR DEFECTO
+        planActual: user.suscripcion?.[0]?.plan?.nombre || 'Sin plan',
+        planCodigo: user.suscripcion?.[0]?.plan?.codigo || 'free',
+        estadoSuscripcion: user.suscripcion?.[0]?.estado || 'inactiva',
+        diasInactivo: diasInactivo,
+        esActivo: diasInactivo <= 30
+      }
+    })
 
-      setUsuarios(usuariosConEstado)
-    } catch (error) {
-      console.error('Error loading usuarios:', error)
-    }
+    setUsuarios(usuariosConEstado)
+  } catch (error) {
+    console.error('Error loading usuarios:', error)
   }
+}
 
   const loadUltimosPagos = async () => {
     try {
