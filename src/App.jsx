@@ -84,13 +84,28 @@ function App() {
     })
 
     // Escuchar cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔐 Auth event:', event)
       setSession(session)
       
       // Si es recuperación de contraseña, ir a reset-password
       if (event === 'PASSWORD_RECOVERY') {
         navigate('/reset-password')
+        return
+      }
+      
+      // Cuando inicia sesión, redirigir según tipo de usuario
+      if (event === 'SIGNED_IN' && session) {
+        const { data: { user } } = await supabase.auth.getUser()
+        console.log('🔐 Redirigiendo usuario:', user.email)
+        
+        if (user.email === 'president@odontolog.lat') {
+          console.log('✅ Es admin, redirigiendo a /admin')
+          navigate('/admin', { replace: true })
+        } else {
+          console.log('➡️ Usuario normal, redirigiendo a /dashboard')
+          navigate('/dashboard', { replace: true })
+        }
         return
       }
       
@@ -127,27 +142,12 @@ function App() {
       <Route path="/privacidad" element={<PrivacidadPage />} />
       <Route path="/terminos" element={<TerminosPage />} />
       
-      {/* Login y Registro */}
-      <Route 
-        path="/login" 
-        element={session ? <Navigate to="/dashboard" replace /> : <LoginScreen />} 
-      />
-      <Route 
-        path="/register" 
-        element={session ? <Navigate to="/dashboard" replace /> : <RegistrationScreen />} 
-      />
-      <Route 
-        path="/registro" 
-        element={session ? <Navigate to="/dashboard" replace /> : <RegistrationScreen />} 
-      />
-      <Route 
-        path="/forgot-password" 
-        element={<ForgotPasswordScreen />} 
-      />
-      <Route 
-        path="/reset-password" 
-        element={<ResetPasswordScreen />} 
-      />
+      {/* Login y Registro - SIN redirección automática */}
+      <Route path="/login" element={<LoginScreen />} />
+      <Route path="/register" element={<RegistrationScreen />} />
+      <Route path="/registro" element={<RegistrationScreen />} />
+      <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+      <Route path="/reset-password" element={<ResetPasswordScreen />} />
 
       {/* ==================== RUTAS PROTEGIDAS ==================== */}
       
@@ -243,13 +243,12 @@ function App() {
         element={session ? <HistorialFinancieroScreen /> : <Navigate to="/login" replace />} 
       />
       <Route 
-      path="/recordatorios" 
-      element={session ? <RecordatoriosScreen /> : <Navigate to="/login" replace />} 
+        path="/recordatorios" 
+        element={session ? <RecordatoriosScreen /> : <Navigate to="/login" replace />} 
       />
-     
       <Route 
-      path="/mensajes-enviados" 
-            element={session ? <MensajesEnviadosScreen /> : <Navigate to="/login" replace />} 
+        path="/mensajes-enviados" 
+        element={session ? <MensajesEnviadosScreen /> : <Navigate to="/login" replace />} 
       />
 
       {/* Configuración */}
@@ -270,28 +269,27 @@ function App() {
         element={session ? <CatalogoProcedimientosScreen /> : <Navigate to="/login" replace />} 
       />
       <Route 
-      path="/backups"
-       element={session ?  <BackupsScreen /> : <Navigate to="/login" replace />} 
-       
+        path="/backups"
+        element={session ? <BackupsScreen /> : <Navigate to="/login" replace />} 
       />
       <Route 
-      path="/exportar" 
-      element={session ? <ExportarDatosScreen />: <Navigate to="/login" replace />} 
+        path="/exportar" 
+        element={session ? <ExportarDatosScreen /> : <Navigate to="/login" replace />} 
       />
       <Route 
-      path="/planes" 
-      element={session ? <PlanesScreen />: <Navigate to="/login" replace />} 
+        path="/planes" 
+        element={session ? <PlanesScreen /> : <Navigate to="/login" replace />} 
       />
       <Route 
-      path="/historial-pagos" 
-      element={session ? <HistorialPagosScreen />: <Navigate to="/login" replace />} 
+        path="/historial-pagos" 
+        element={session ? <HistorialPagosScreen /> : <Navigate to="/login" replace />} 
       />
+      
+      {/* Panel de Administración */}
       <Route
-       path="/admin" 
-       element={session ? <AdminDashboard />: <Navigate to ="/login" replace />} 
-       />
-
-
+        path="/admin" 
+        element={session ? <AdminDashboard /> : <Navigate to="/login" replace />} 
+      />
 
       {/* Redirect cualquier ruta no existente */}
       <Route path="*" element={<Navigate to="/" replace />} />
