@@ -94,15 +94,6 @@ function App() {
         return
       }
       
-      // Cuando el usuario inicia sesión normalmente
-      if (event === 'SIGNED_IN' && session) {
-        // Solo redirigir al dashboard si NO es recuperación de contraseña
-        const isPasswordRecovery = window.location.hash.includes('type=recovery')
-        if (!isPasswordRecovery) {
-          navigate('/dashboard')
-        }
-      }
-      
       // Cuando cierra sesión
       if (event === 'SIGNED_OUT') {
         navigate('/login')
