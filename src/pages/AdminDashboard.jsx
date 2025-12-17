@@ -6,9 +6,6 @@ import { useIsAdmin } from '../hooks/useIsAdmin'
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
-  console.log('🎯 AdminDashboard montado')
-  console.log('🎯 isAdmin:', isAdmin)
-  console.log('🎯 adminLoading:', adminLoading)
   
   const [stats, setStats] = useState({
     totalUsuarios: 0,
@@ -31,15 +28,11 @@ export default function AdminDashboard() {
   const [planes, setPlanes] = useState([])
 
   useEffect(() => {
-    console.log('🎯 useEffect AdminDashboard - adminLoading:', adminLoading, 'isAdmin:', isAdmin)
-    
     if (!adminLoading) {
       if (!isAdmin) {
-        console.log('❌ NO es admin, redirigiendo a /dashboard')
         navigate('/dashboard')
         return
       }
-      console.log('✅ ES admin, cargando datos')
       loadData()
     }
   }, [adminLoading, isAdmin])
@@ -68,24 +61,28 @@ export default function AdminDashboard() {
         .select('id, created_at')
       
       // Usuarios con actividad reciente (últimos 30 días)
+      const fechaLimite = new Date()
+      fechaLimite.setDate(fechaLimite.getDate() - 30)
+      
       const { data: activeUsers } = await supabase
         .from('usuarios_actividad')
         .select('dentista_id')
-        .gte('ultima_actividad', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .gte('ultima_actividad', fechaLimite.toISOString())
 
-      // Usuarios premium
-      const { data: premiumUsers } = await supabase
+      // Usuarios premium (no free)
+      const { data: suscripciones } = await supabase
         .from('suscripciones_usuarios')
-        .select('dentista_id, plan:plan_id(codigo)')
+        .select('dentista_id, plan_id, planes_suscripcion(codigo)')
         .eq('estado', 'activa')
-        .in('plan.codigo', ['pro', 'enterprise'])
 
-      
+      const premiumUsers = suscripciones?.filter(s => 
+        s.planes_suscripcion?.codigo !== 'free'
+      ) || []
 
       setStats({
         totalUsuarios: allUsers?.length || 0,
         usuariosActivos: activeUsers?.length || 0,
-        usuariosPremium: premiumUsers?.length || 0,
+        usuariosPremium: premiumUsers.length,
         usuariosPorPais: { PY: 0, BR: 0, AR: 0, otros: 0 }
       })
     } catch (error) {
@@ -94,50 +91,66 @@ export default function AdminDashboard() {
   }
 
   const loadUsuarios = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('dentistas')
-      .select(`
-        id,
-        email,
-        nombre,
-        telefono,
-        created_at,
-        suscripcion:suscripciones_usuarios(
-          id,
+    try {
+      // 1. Obtener todos los dentistas
+      const { data: dentistas, error: dentistasError } = await supabase
+        .from('dentistas')
+        .select('id, email, nombre, apellido, clinica, telefono, created_at')
+        .order('created_at', { ascending: false })
+
+      if (dentistasError) throw dentistasError
+
+      // 2. Obtener suscripciones
+      const { data: suscripciones } = await supabase
+        .from('suscripciones_usuarios')
+        .select(`
+          dentista_id,
           estado,
-          plan:plan_id(id, nombre, codigo)
-        ),
-        actividad:usuarios_actividad(
-          ultima_actividad
-        )
-      `)
-      .order('created_at', { ascending: false })
+          plan_id,
+          planes_suscripcion(id, nombre, codigo)
+        `)
 
-    if (error) throw error
+      // 3. Obtener actividad
+      const { data: actividades } = await supabase
+        .from('usuarios_actividad')
+        .select('dentista_id, ultima_actividad')
 
-    const usuariosConEstado = data.map(user => {
-      const ultimaActividad = user.actividad?.[0]?.ultima_actividad
-      const diasInactivo = ultimaActividad 
-        ? Math.floor((Date.now() - new Date(ultimaActividad).getTime()) / (1000 * 60 * 60 * 24))
-        : 999
+      // 4. Combinar datos
+      const usuariosConEstado = dentistas.map(dentista => {
+        // Buscar suscripción
+        const suscripcion = suscripciones?.find(s => s.dentista_id === dentista.id)
+        const plan = suscripcion?.planes_suscripcion
 
-      return {
-        ...user,
-        pais: '-', // ← VALOR POR DEFECTO
-        planActual: user.suscripcion?.[0]?.plan?.nombre || 'Sin plan',
-        planCodigo: user.suscripcion?.[0]?.plan?.codigo || 'free',
-        estadoSuscripcion: user.suscripcion?.[0]?.estado || 'inactiva',
-        diasInactivo: diasInactivo,
-        esActivo: diasInactivo <= 30
-      }
-    })
+        // Buscar actividad
+        const actividad = actividades?.find(a => a.dentista_id === dentista.id)
+        const ultimaActividad = actividad?.ultima_actividad
+        
+        const diasInactivo = ultimaActividad 
+          ? Math.floor((Date.now() - new Date(ultimaActividad).getTime()) / (1000 * 60 * 60 * 24))
+          : 999
 
-    setUsuarios(usuariosConEstado)
-  } catch (error) {
-    console.error('Error loading usuarios:', error)
+        // Determinar nombre a mostrar
+        const nombreMostrar = dentista.clinica 
+          ? dentista.clinica 
+          : `${dentista.nombre} ${dentista.apellido}`.trim()
+
+        return {
+          ...dentista,
+          nombreMostrar,
+          planActual: plan?.nombre || 'Sin plan',
+          planCodigo: plan?.codigo || 'free',
+          planId: suscripcion?.plan_id || null,
+          estadoSuscripcion: suscripcion?.estado || 'inactiva',
+          diasInactivo: diasInactivo,
+          esActivo: diasInactivo <= 30
+        }
+      })
+
+      setUsuarios(usuariosConEstado)
+    } catch (error) {
+      console.error('Error loading usuarios:', error)
+    }
   }
-}
 
   const loadUltimosPagos = async () => {
     try {
@@ -150,14 +163,23 @@ export default function AdminDashboard() {
           estado,
           fecha_pago,
           metodo_pago,
-          dentista:dentista_id(email, nombre),
-          plan:plan_id(nombre)
+          dentista_id,
+          plan_id,
+          dentistas(email, nombre, clinica),
+          planes_suscripcion(nombre)
         `)
         .order('created_at', { ascending: false })
         .limit(10)
 
       if (error) throw error
-      setUltimosPagos(data || [])
+
+      const pagosFormateados = data?.map(pago => ({
+        ...pago,
+        dentista: pago.dentistas,
+        plan: pago.planes_suscripcion
+      })) || []
+
+      setUltimosPagos(pagosFormateados)
     } catch (error) {
       console.error('Error loading pagos:', error)
     }
@@ -189,23 +211,44 @@ export default function AdminDashboard() {
     try {
       const usuario = modalCambiarPlan.usuario
 
-      // Actualizar suscripción
-      const { error } = await supabase
+      // Verificar si ya tiene suscripción
+      const { data: suscripcionExistente } = await supabase
         .from('suscripciones_usuarios')
-        .update({
-          plan_id: nuevoPlanId,
-          updated_at: new Date().toISOString()
-        })
+        .select('id')
         .eq('dentista_id', usuario.id)
+        .single()
 
-      if (error) throw error
+      if (suscripcionExistente) {
+        // Actualizar suscripción existente
+        const { error } = await supabase
+          .from('suscripciones_usuarios')
+          .update({
+            plan_id: nuevoPlanId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('dentista_id', usuario.id)
+
+        if (error) throw error
+      } else {
+        // Crear nueva suscripción
+        const { error } = await supabase
+          .from('suscripciones_usuarios')
+          .insert({
+            dentista_id: usuario.id,
+            plan_id: nuevoPlanId,
+            estado: 'activa',
+            fecha_inicio: new Date().toISOString()
+          })
+
+        if (error) throw error
+      }
 
       alert('✅ Plan actualizado correctamente')
       setModalCambiarPlan({ isOpen: false, usuario: null })
       await loadData()
     } catch (error) {
       console.error('Error cambiando plan:', error)
-      alert('❌ Error al cambiar plan')
+      alert('❌ Error al cambiar plan: ' + error.message)
     }
   }
 
@@ -214,12 +257,6 @@ export default function AdminDashboard() {
     if (filtros.estado !== 'todos') {
       if (filtros.estado === 'activo' && !user.esActivo) return false
       if (filtros.estado === 'inactivo' && user.esActivo) return false
-    }
-    if (filtros.pais !== 'todos') {
-      const paisUser = user.pais?.toUpperCase()
-      if (filtros.pais === 'PY' && !(paisUser === 'PY' || paisUser === 'PARAGUAY')) return false
-      if (filtros.pais === 'BR' && !(paisUser === 'BR' || paisUser === 'BRASIL' || paisUser === 'BRAZIL')) return false
-      if (filtros.pais === 'AR' && !(paisUser === 'AR' || paisUser === 'ARGENTINA')) return false
     }
     return true
   })
@@ -273,31 +310,13 @@ export default function AdminDashboard() {
           </div>
 
           <div style={styles.statCard}>
-            <div style={styles.statIcon}>🌎</div>
-            <div style={styles.statLabel}>Por País</div>
-            <div style={styles.paisesGrid}>
-              <div>🇵🇾 PY: {stats.usuariosPorPais.PY}</div>
-              <div>🇧🇷 BR: {stats.usuariosPorPais.BR}</div>
-              <div>🇦🇷 AR: {stats.usuariosPorPais.AR}</div>
-              <div>🌍 Otros: {stats.usuariosPorPais.otros}</div>
+            <div style={styles.statIcon}>💰</div>
+            <div style={styles.statNumber}>
+              {usuarios.filter(u => u.planCodigo === 'free').length}
             </div>
+            <div style={styles.statLabel}>Usuarios Gratuitos</div>
           </div>
         </div>
-
-        {/* 
-        ═══════════════════════════════════════════════════════
-        📊 SECCIÓN DE RENTABILIDAD (PREPARADA PARA EL FUTURO)
-        ═══════════════════════════════════════════════════════
-        
-        Descomentar cuando estés listo para agregar análisis:
-        
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>📊 Análisis de Rentabilidad</h2>
-          <RentabilidadStats />
-        </div>
-        
-        ═══════════════════════════════════════════════════════
-        */}
 
         {/* Últimos pagos */}
         <div style={styles.section}>
@@ -321,7 +340,7 @@ export default function AdminDashboard() {
                   {ultimosPagos.map(pago => (
                     <tr key={pago.id} style={styles.tr}>
                       <td style={styles.td}>
-                        {pago.dentista?.email || 'N/A'}
+                        {pago.dentista?.clinica || pago.dentista?.nombre || pago.dentista?.email || 'N/A'}
                       </td>
                       <td style={styles.td}>{pago.plan?.nombre || 'N/A'}</td>
                       <td style={styles.td}>
@@ -374,17 +393,6 @@ export default function AdminDashboard() {
               <option value="inactivo">Inactivos</option>
             </select>
 
-            <select 
-              value={filtros.pais}
-              onChange={(e) => setFiltros({...filtros, pais: e.target.value})}
-              style={styles.select}
-            >
-              <option value="todos">Todos los países</option>
-              <option value="PY">Paraguay</option>
-              <option value="BR">Brasil</option>
-              <option value="AR">Argentina</option>
-            </select>
-
             <button onClick={loadData} style={styles.refreshButton}>
               🔄 Actualizar
             </button>
@@ -396,8 +404,7 @@ export default function AdminDashboard() {
               <thead>
                 <tr>
                   <th style={styles.th}>Email</th>
-                  <th style={styles.th}>Nombre</th>
-                  <th style={styles.th}>País</th>
+                  <th style={styles.th}>Nombre/Clínica</th>
                   <th style={styles.th}>Plan</th>
                   <th style={styles.th}>Estado</th>
                   <th style={styles.th}>Días Inactivo</th>
@@ -408,8 +415,7 @@ export default function AdminDashboard() {
                 {usuariosFiltrados.map(user => (
                   <tr key={user.id} style={styles.tr}>
                     <td style={styles.td}>{user.email}</td>
-                    <td style={styles.td}>{user.nombre || '-'}</td>
-                    <td style={styles.td}>{user.pais || '-'}</td>
+                    <td style={styles.td}>{user.nombreMostrar}</td>
                     <td style={styles.td}>
                       <span style={{
                         ...styles.planBadge,
@@ -462,27 +468,33 @@ export default function AdminDashboard() {
             </p>
 
             <div style={styles.planesGrid}>
-              {planes.map(plan => (
-                <div
-                  key={plan.id}
-                  style={{
-                    ...styles.planCard,
-                    ...(modalCambiarPlan.usuario?.planActual === plan.nombre && styles.planCardActual)
-                  }}
-                >
-                  <div style={styles.planNombre}>{plan.nombre}</div>
-                  <div style={styles.planPrecio}>
-                    Gs. {Number(plan.precio_mensual_gs).toLocaleString()}
-                  </div>
-                  <button
-                    onClick={() => confirmarCambioPlan(plan.id)}
-                    style={styles.planButton}
-                    disabled={modalCambiarPlan.usuario?.planActual === plan.nombre}
+              {planes.map(plan => {
+                const esActual = modalCambiarPlan.usuario?.planId === plan.id
+                return (
+                  <div
+                    key={plan.id}
+                    style={{
+                      ...styles.planCard,
+                      ...(esActual && styles.planCardActual)
+                    }}
                   >
-                    {modalCambiarPlan.usuario?.planActual === plan.nombre ? 'Plan Actual' : 'Seleccionar'}
-                  </button>
-                </div>
-              ))}
+                    <div style={styles.planNombre}>{plan.nombre}</div>
+                    <div style={styles.planPrecio}>
+                      Gs. {Number(plan.precio_mensual_gs).toLocaleString()}
+                    </div>
+                    <button
+                      onClick={() => confirmarCambioPlan(plan.id)}
+                      style={{
+                        ...styles.planButton,
+                        ...(esActual && styles.planButtonDisabled)
+                      }}
+                      disabled={esActual}
+                    >
+                      {esActual ? 'Plan Actual' : 'Seleccionar'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
 
             <button
@@ -572,14 +584,6 @@ const styles = {
     fontSize: '12px',
     color: '#9ca3af',
     marginTop: '4px',
-  },
-  paisesGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px',
-    marginTop: '12px',
-    fontSize: '14px',
-    color: '#374151',
   },
   section: {
     backgroundColor: '#ffffff',
@@ -743,7 +747,6 @@ const styles = {
     borderRadius: '12px',
     padding: '16px',
     textAlign: 'center',
-    cursor: 'pointer',
   },
   planCardActual: {
     border: '2px solid #10b981',
@@ -770,6 +773,10 @@ const styles = {
     fontSize: '13px',
     fontWeight: '600',
     cursor: 'pointer',
+  },
+  planButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    cursor: 'not-allowed',
   },
   cancelButton: {
     width: '100%',
