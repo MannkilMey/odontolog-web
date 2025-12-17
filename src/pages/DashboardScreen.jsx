@@ -7,6 +7,7 @@ import ModalUpgrade from '../components/ModalUpgrade'
 import { useActivityTracker } from '../hooks/useActivityTracker'
 
 export default function DashboardScreen({ session }) {
+  console.log('📊 DashboardScreen montado')
   const [user, setUser] = useState(null)
   const [stats, setStats] = useState({
     totalPacientes: 0,

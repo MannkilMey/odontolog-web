@@ -6,6 +6,9 @@ import { useIsAdmin } from '../hooks/useIsAdmin'
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { isAdmin, loading: adminLoading } = useIsAdmin()
+  console.log('🎯 AdminDashboard montado')
+  console.log('🎯 isAdmin:', isAdmin)
+  console.log('🎯 adminLoading:', adminLoading)
   
   const [stats, setStats] = useState({
     totalUsuarios: 0,
@@ -28,11 +31,15 @@ export default function AdminDashboard() {
   const [planes, setPlanes] = useState([])
 
   useEffect(() => {
+    console.log('🎯 useEffect AdminDashboard - adminLoading:', adminLoading, 'isAdmin:', isAdmin)
+    
     if (!adminLoading) {
       if (!isAdmin) {
+        console.log('❌ NO es admin, redirigiendo a /dashboard')
         navigate('/dashboard')
         return
       }
+      console.log('✅ ES admin, cargando datos')
       loadData()
     }
   }, [adminLoading, isAdmin])

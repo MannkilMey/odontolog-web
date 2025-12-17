@@ -1,6 +1,3 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-
 export function useIsAdmin() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -12,9 +9,13 @@ export function useIsAdmin() {
 
   const checkAdmin = async () => {
     try {
+      console.log('🔍 useIsAdmin: Verificando admin...')
       const { data: { user } } = await supabase.auth.getUser()
       
+      console.log('🔍 useIsAdmin: Usuario obtenido:', user?.email)
+      
       if (!user) {
+        console.log('❌ useIsAdmin: No hay usuario')
         setIsAdmin(false)
         setLoading(false)
         return
@@ -24,13 +25,17 @@ export function useIsAdmin() {
 
       // Verificar si el email es el admin
       const isAdminUser = user.email === 'president@odontolog.lat'
+      console.log('🔍 useIsAdmin: ¿Es admin?', isAdminUser)
+      console.log('🔍 useIsAdmin: Comparación:', user.email, '===', 'president@odontolog.lat')
+      
       setIsAdmin(isAdminUser)
       
     } catch (error) {
-      console.error('Error checking admin:', error)
+      console.error('❌ useIsAdmin: Error checking admin:', error)
       setIsAdmin(false)
     } finally {
       setLoading(false)
+      console.log('🔍 useIsAdmin: Finalizado')
     }
   }
 
