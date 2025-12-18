@@ -47,7 +47,7 @@ export const registrarIngreso = async () => {
 }
 
 /**
- * Registrar salida de sesión
+ * Registrar salida de sesión (sin bloquear)
  */
 export const registrarSalida = async () => {
   try {
@@ -60,15 +60,22 @@ export const registrarSalida = async () => {
     const fin = new Date()
     const duracionMinutos = Math.round((fin - inicio) / 1000 / 60)
 
-    await supabase
+    // NO ESPERAR la respuesta - ejecutar y continuar
+    supabase
       .from('sesiones_usuarios')
       .update({
         fecha_salida: fin.toISOString(),
         duracion_minutos: duracionMinutos
       })
       .eq('id', sessionId)
+      .then(() => {
+        console.log('✅ Sesión cerrada correctamente')
+      })
+      .catch((error) => {
+        console.error('Error cerrando sesión:', error)
+      })
 
-    // Limpiar localStorage
+    // Limpiar localStorage inmediatamente
     localStorage.removeItem('session_id')
     localStorage.removeItem('session_start')
 
@@ -76,7 +83,6 @@ export const registrarSalida = async () => {
     console.error('Error en registrarSalida:', error)
   }
 }
-
 /**
  * Incrementar contador de uso mensual
  */

@@ -263,7 +263,18 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     if (window.confirm('¿Cerrar sesión?')) {
-      await supabase.auth.signOut()
+      try {
+        // Registrar salida ANTES de cerrar (sin esperar)
+        registrarSalida()
+        
+        // Cerrar sesión inmediatamente
+        await supabase.auth.signOut()
+        
+        // App.jsx redirigirá automáticamente a /login
+      } catch (error) {
+        console.error('Error al cerrar sesión:', error)
+        alert('Error al cerrar sesión')
+      }
     }
   }
 
