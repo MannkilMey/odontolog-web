@@ -72,8 +72,8 @@ function App() {
   }, [session])
 
   // ============================================
-  // AUTENTICACIÓN
-  // ============================================
+// AUTENTICACIÓN
+// ============================================
   useEffect(() => {
     // Obtener sesión actual
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -92,10 +92,10 @@ function App() {
         return
       }
       
-      // Cuando inicia sesión, redirigir según tipo de usuario
-      if (event === 'SIGNED_IN' && session) {
+      // Cuando inicia sesión, SOLO redirigir si está en la página de login
+      if (event === 'SIGNED_IN' && session && location.pathname === '/login') {
         const { data: { user } } = await supabase.auth.getUser()
-        console.log('🔐 Redirigiendo usuario:', user.email)
+        console.log('🔐 Login exitoso, redirigiendo:', user.email)
         
         if (user.email === 'president@odontolog.lat') {
           console.log('✅ Es admin, redirigiendo a /admin')
@@ -114,7 +114,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [navigate])
+  }, [navigate, location.pathname]) // ← Agregar location.pathname
 
   if (loading) {
     return (
