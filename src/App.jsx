@@ -67,9 +67,7 @@ function App() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      if (session) {
-        registrarSalida()
-      }
+      
     }
   }, [session])
 
