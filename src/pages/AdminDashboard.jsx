@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useIsAdmin } from '../hooks/useIsAdmin'
+import { registrarSalida } from '../utils/analytics' 
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
