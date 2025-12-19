@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { generarPresupuestoPDF, generarReciboPDF } from '../utils/pdfGenerator'
 import { enviarPresupuesto, enviarRecibo } from '../utils/emailService'
 import EmailPreviewModal from '../components/EmailPreviewModal'
+import { enviarWhatsAppTwilio, verificarLimiteWhatsApp } from '../utils/twilioService'
+
 
 export default function PacienteDetailScreen() {
   const { id } = useParams()
@@ -259,64 +261,60 @@ export default function PacienteDetailScreen() {
   }
 
   const enviarPresupuestoPorWhatsApp = async (presupuesto) => {
-  try {
-    if (!paciente.telefono) {
-      alert('⚠️ Este paciente no tiene teléfono registrado')
-      return
+    try {
+      if (!paciente.telefono) {
+        alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
+
+      // ✅ VERIFICAR LÍMITE PRIMERO
+      const limite = await verificarLimiteWhatsApp()
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
+        return
+      }
+
+      // Cargar configuración
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: configData } = await supabase
+        .from('configuracion_clinica')
+        .select('*')
+        .eq('dentista_id', user.id)
+        .single()
+
+      const config = configData
+      const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
+      
+      const mensaje = `Hola ${paciente.nombre},
+
+  Le envío el presupuesto ${presupuesto.numero_presupuesto}:
+
+  📋 *Detalles:*
+  - Fecha: ${formatDate(presupuesto.fecha_emision)}
+  ${presupuesto.fecha_vencimiento ? `- Válido hasta: ${formatDate(presupuesto.fecha_vencimiento)}` : ''}
+  - Total: Gs. ${Number(presupuesto.total).toLocaleString('es-PY')}
+
+  Para más información, no dude en contactarnos.
+
+  Saludos,
+  *${nombreClinica}*
+  ${config?.telefono ? `📞 ${config.telefono}` : ''}`
+
+      // ✅ ENVIAR VÍA TWILIO
+      const resultado = await enviarWhatsAppTwilio({
+        to: paciente.telefono,
+        mensaje,
+        pacienteId: paciente.id,
+        tipo: 'presupuesto'
+      })
+
+      alert(`✅ Presupuesto enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
     }
-
-    // Cargar configuración de la clínica
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      alert('⚠️ Error: No se pudo obtener el usuario')
-      return
-    }
-
-    const { data: configData, error: configError } = await supabase
-      .from('configuracion_clinica')
-      .select('*')
-      .eq('dentista_id', user.id)
-      .single()
-
-    // ✅ Usar la variable correcta
-    const config = configData
-    
-    // Formatear número de teléfono
-    let telefono = paciente.telefono.replace(/[^0-9]/g, '')
-    if (!telefono.startsWith('595')) {
-      telefono = '595' + telefono
-    }
-
-    // Construir mensaje
-    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
-    
-    const mensaje = `Hola ${paciente.nombre},
-
-Le envío el presupuesto ${presupuesto.numero_presupuesto}:
-
-📋 *Detalles:*
-- Fecha: ${formatDate(presupuesto.fecha_emision)}
-${presupuesto.fecha_vencimiento ? `- Válido hasta: ${formatDate(presupuesto.fecha_vencimiento)}` : ''}
-- Total: Gs. ${Number(presupuesto.total).toLocaleString('es-PY')}
-
-Para más información, no dude en contactarnos.
-
-Saludos,
-*${nombreClinica}*
-${config?.telefono ? `📞 ${config.telefono}` : ''}`
-
-    // Abrir WhatsApp Web
-    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-    window.open(url, '_blank')
-
-    console.log('✅ WhatsApp abierto con presupuesto')
-
-  } catch (error) {
-    console.error('Error completo:', error)
-    alert('Error al abrir WhatsApp: ' + error.message)
   }
-}
 
   const enviarPresupuestoPorEmail = async (presupuesto) => {
     try {
@@ -535,68 +533,64 @@ ${config?.telefono ? `📞 ${config.telefono}` : ''}`
   }
 
   const enviarReciboPorWhatsApp = async (pago) => {
-  try {
-    if (!paciente.telefono) {
-      alert('⚠️ Este paciente no tiene teléfono registrado')
-      return
+    try {
+      if (!paciente.telefono) {
+        alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
+
+      // ✅ VERIFICAR LÍMITE PRIMERO
+      const limite = await verificarLimiteWhatsApp()
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
+        return
+      }
+
+      // Cargar configuración
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: configData } = await supabase
+        .from('configuracion_clinica')
+        .select('*')
+        .eq('dentista_id', user.id)
+        .single()
+
+      const config = configData
+      const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
+      
+      const mensaje = `Hola ${paciente.nombre},
+
+  🧾 *RECIBO DE PAGO*
+
+  Le confirmamos la recepción de su pago:
+
+  *Recibo N°:* ${pago.numero_recibo}
+  📅 *Fecha:* ${formatDate(pago.fecha_pago)}
+  💰 *Monto:* Gs. ${Number(pago.monto).toLocaleString('es-PY')}
+  💳 *Método:* ${pago.metodo_pago}
+  📝 *Concepto:* ${pago.concepto}
+  ${pago.notas ? `\n_Notas: ${pago.notas}_` : ''}
+
+  ✅ Gracias por su pago.
+
+  Saludos,
+  *${nombreClinica}*
+  ${config?.telefono ? `📞 ${config.telefono}` : ''}`
+
+      // ✅ ENVIAR VÍA TWILIO
+      const resultado = await enviarWhatsAppTwilio({
+        to: paciente.telefono,
+        mensaje,
+        pacienteId: paciente.id,
+        tipo: 'recibo_pago'
+      })
+
+      alert(`✅ Recibo enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
     }
-
-    // Cargar configuración de la clínica
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      alert('⚠️ Error: No se pudo obtener el usuario')
-      return
-    }
-
-    const { data: configData, error: configError } = await supabase
-      .from('configuracion_clinica')
-      .select('*')
-      .eq('dentista_id', user.id)
-      .single()
-
-    // ✅ Usar la variable correcta
-    const config = configData
-
-    // Formatear teléfono
-    let telefono = paciente.telefono.replace(/[^0-9]/g, '')
-    if (!telefono.startsWith('595')) {
-      telefono = '595' + telefono
-    }
-
-    // Construir mensaje
-    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
-    
-    const mensaje = `Hola ${paciente.nombre},
-
-🧾 *RECIBO DE PAGO*
-
-Le confirmamos la recepción de su pago:
-
-*Recibo N°:* ${pago.numero_recibo}
-📅 *Fecha:* ${formatDate(pago.fecha_pago)}
-💰 *Monto:* Gs. ${Number(pago.monto).toLocaleString('es-PY')}
-💳 *Método:* ${pago.metodo_pago}
-📝 *Concepto:* ${pago.concepto}
-${pago.notas ? `\n_Notas: ${pago.notas}_` : ''}
-
-✅ Gracias por su pago.
-
-Saludos,
-*${nombreClinica}*
-${config?.telefono ? `📞 ${config.telefono}` : ''}`
-
-    // Abrir WhatsApp Web
-    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-    window.open(url, '_blank')
-
-    console.log('✅ WhatsApp abierto con recibo')
-
-  } catch (error) {
-    console.error('Error completo:', error)
-    alert('Error al abrir WhatsApp: ' + error.message)
   }
-}
 
   const eliminarPago = async (pagoId, numeroRecibo) => {
     const confirmacion = window.confirm(

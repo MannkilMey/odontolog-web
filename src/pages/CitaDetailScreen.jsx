@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailService'
 import EmailPreviewModal from '../components/EmailPreviewModal'
+import { enviarWhatsAppTwilio, verificarLimiteWhatsApp } from '../utils/twilioService'
+
 
 export default function CitaDetailScreen() {
   const { id } = useParams()
@@ -244,46 +246,55 @@ export default function CitaDetailScreen() {
   }
 }
 
-const enviarRecordatorioWhatsApp = async () => {
-  try {
-    if (!paciente || !paciente.telefono) {
-      alert('⚠️ Este paciente no tiene teléfono registrado')
-      return
+  const enviarRecordatorioWhatsApp = async () => {
+    try {
+      if (!paciente || !paciente.telefono) {
+        alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
+
+      // ✅ VERIFICAR LÍMITE PRIMERO
+      const limite = await verificarLimiteWhatsApp()
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
+        return
+      }
+
+      const fechaCita = new Date(cita.fecha_cita)
+      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      })
+
+      const mensaje = `Hola ${paciente.nombre},
+
+  🔔 *Recordatorio de Cita*
+
+  📅 Fecha: ${fechaFormateada}
+  🕐 Hora: ${formatTime(cita.hora_inicio)}
+  📋 Motivo: ${cita.motivo || 'Consulta general'}
+
+  Por favor confirme su asistencia o avísenos si necesita reprogramar.
+
+  ¡Lo esperamos!
+  Equipo OdontoLog`
+
+      // ✅ ENVIAR VÍA TWILIO
+      const resultado = await enviarWhatsAppTwilio({
+        to: paciente.telefono,
+        mensaje,
+        pacienteId: paciente.id,
+        tipo: 'recordatorio_cita'
+      })
+
+      alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
     }
-
-    let telefono = paciente.telefono.replace(/[^0-9]/g, '')
-    if (!telefono.startsWith('595')) {
-      telefono = '595' + telefono
-    }
-
-    const fechaCita = new Date(cita.fecha_cita)
-    const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
-
-    const mensaje = `Hola ${paciente.nombre},
-
-🔔 *Recordatorio de Cita*
-
-📅 Fecha: ${fechaFormateada}
-🕐 Hora: ${formatTime(cita.hora_inicio)}
-📋 Motivo: ${cita.motivo || 'Consulta general'}
-
-Por favor confirme su asistencia o avísenos si necesita reprogramar.
-
-¡Lo esperamos!
-Equipo OdontoLog`
-
-    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-    window.open(url, '_blank')
-
-  } catch (error) {
-    console.error('Error:', error)
-    alert('Error al abrir WhatsApp')
   }
-}
 
   if (loading) {
     return (
