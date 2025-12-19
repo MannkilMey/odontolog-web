@@ -20,7 +20,6 @@ export default function LoginScreen({ onBack, onRegister }) {
       
       if (error) throw error
 
-      console.log('🔐 Login exitoso:', data.user.email)
       // App.jsx se encargará de la redirección automáticamente
       
     } catch (error) {

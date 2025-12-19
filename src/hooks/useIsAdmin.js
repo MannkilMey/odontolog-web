@@ -12,13 +12,10 @@ export function useIsAdmin() {
 
   const checkAdmin = async () => {
     try {
-      console.log('🔍 useIsAdmin: Verificando admin...')
       const { data: { user } } = await supabase.auth.getUser()
       
-      console.log('🔍 useIsAdmin: Usuario obtenido:', user?.email)
       
       if (!user) {
-        console.log('❌ useIsAdmin: No hay usuario')
         setIsAdmin(false)
         setLoading(false)
         return
@@ -28,7 +25,6 @@ export function useIsAdmin() {
 
       // Verificar si el email es el admin
       const isAdminUser = user.email === 'president@odontolog.lat'
-      console.log('🔍 useIsAdmin: ¿Es admin?', isAdminUser)
       
       setIsAdmin(isAdminUser)
       
@@ -37,7 +33,6 @@ export function useIsAdmin() {
       setIsAdmin(false)
     } finally {
       setLoading(false)
-      console.log('🔍 useIsAdmin: Finalizado')
     }
   }
 

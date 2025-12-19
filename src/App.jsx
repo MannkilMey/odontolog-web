@@ -83,7 +83,6 @@ function App() {
 
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth event:', event)
       setSession(session)
       
       // Si es recuperación de contraseña, ir a reset-password
@@ -95,13 +94,10 @@ function App() {
       // Cuando inicia sesión, SOLO redirigir si está en la página de login
       if (event === 'SIGNED_IN' && session && location.pathname === '/login') {
         const { data: { user } } = await supabase.auth.getUser()
-        console.log('🔐 Login exitoso, redirigiendo:', user.email)
         
         if (user.email === 'president@odontolog.lat') {
-          console.log('✅ Es admin, redirigiendo a /admin')
           navigate('/admin', { replace: true })
         } else {
-          console.log('➡️ Usuario normal, redirigiendo a /dashboard')
           navigate('/dashboard', { replace: true })
         }
         return
