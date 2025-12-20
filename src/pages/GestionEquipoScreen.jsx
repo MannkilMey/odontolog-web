@@ -21,91 +21,89 @@ export default function GestionEquipoScreen() {
     checkPlanAndLoadData()
   }, [])
 
-  // Reemplazar la función checkPlanAndLoadData completa:
-const checkPlanAndLoadData = async () => {
+  const checkPlanAndLoadData = async () => {
     try {
-        const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
 
-        // Verificar plan
-        const { data: suscripcion, error: subError } = await supabase
+      // Verificar plan
+      const { data: suscripcion, error: subError } = await supabase
         .from('suscripciones_usuarios')
         .select(`
-            *,
-            plan:planes_suscripcion(
+          *,
+          plan:planes_suscripcion(
             codigo,
             nombre,
             max_perfiles,
             permite_multi_perfil
-            )
+          )
         `)
         .eq('dentista_id', user.id)
         .single()
 
-        // ✅ MANEJAR ERRORES
-        if (subError) {
+      // ✅ MANEJAR ERRORES
+      if (subError) {
         console.error('Error al cargar suscripción:', subError)
         setIsEnterprise(false)
         setLoading(false)
         return
-        }
+      }
 
-        // ✅ VERIFICAR QUE EXISTA PLAN
-        if (!suscripcion || !suscripcion.plan) {
+      // ✅ VERIFICAR QUE EXISTA PLAN
+      if (!suscripcion || !suscripcion.plan) {
         console.error('No se encontró plan de suscripción')
         setIsEnterprise(false)
         setLoading(false)
         return
-        }
+      }
 
-        const planData = suscripcion.plan
-        setIsEnterprise(planData.permite_multi_perfil || false)
-        setMaxPerfiles(planData.max_perfiles || 1)
+      const planData = suscripcion.plan
+      setIsEnterprise(planData.permite_multi_perfil || false)
+      setMaxPerfiles(planData.max_perfiles || 1)
 
-        if (!planData.permite_multi_perfil) {
+      if (!planData.permite_multi_perfil) {
         setLoading(false)
         return
-        }
+      }
 
-        // Cargar perfiles
-        const { data: perfilesData, error: perfilesError } = await supabase
+      // Cargar perfiles
+      const { data: perfilesData, error: perfilesError } = await supabase
         .from('perfiles_clinica')
         .select(`
-            *,
-            dentista:dentistas(id, nombre, apellido, email, telefono)
+          *,
+          dentista:dentistas(id, nombre, apellido, email, telefono)
         `)
         .eq('clinica_owner_id', user.id)
         .order('created_at', { ascending: false })
 
-        if (perfilesError) {
+      if (perfilesError) {
         console.error('Error al cargar perfiles:', perfilesError)
-        // No lanzar error, solo mostrar array vacío
         setPerfiles([])
-        } else {
+      } else {
         setPerfiles(perfilesData || [])
-        }
+      }
 
-        // Cargar invitaciones pendientes
-        const { data: invitData, error: invitError } = await supabase
+      // Cargar invitaciones pendientes
+      const { data: invitData, error: invitError } = await supabase
         .from('invitaciones_clinica')
         .select('*')
         .eq('clinica_owner_id', user.id)
         .eq('estado', 'pendiente')
         .order('created_at', { ascending: false })
 
-        if (invitError) {
+      if (invitError) {
         console.error('Error al cargar invitaciones:', invitError)
         setInvitaciones([])
-        } else {
+      } else {
         setInvitaciones(invitData || [])
-        }
+      }
 
     } catch (error) {
-        console.error('Error general:', error)
-        alert('Error al cargar datos: ' + error.message)
+      console.error('Error general:', error)
+      alert('Error al cargar datos: ' + error.message)
     } finally {
-        setLoading(false)
+      setLoading(false)
     }
-    }
+  }
 
   const handleInvite = async () => {
     if (!inviteForm.email.trim()) {
@@ -139,7 +137,14 @@ const checkPlanAndLoadData = async () => {
 
       if (error) throw error
 
-      alert('✅ Invitación enviada correctamente')
+      // ✅ Generar link de invitación
+      const inviteLink = `${window.location.origin}/aceptar-invitacion?token=${token}`
+
+      // ✅ Copiar al portapapeles
+      navigator.clipboard.writeText(inviteLink)
+
+      alert(`✅ Invitación enviada correctamente\n\n📋 Link copiado al portapapeles:\n${inviteLink}\n\nComparte este link con ${inviteForm.email}`)
+      
       setShowInviteModal(false)
       setInviteForm({ email: '', rol: 'colaborador', mensaje: '' })
       checkPlanAndLoadData()
@@ -148,34 +153,7 @@ const checkPlanAndLoadData = async () => {
       console.error('Error:', error)
       alert('Error al enviar invitación: ' + error.message)
     }
-        const { error } = await supabase
-        .from('invitaciones_clinica')
-        .insert({
-        clinica_owner_id: user.id,
-        email_invitado: inviteForm.email.trim().toLowerCase(),
-        rol: inviteForm.rol,
-        token: token,
-        mensaje_invitacion: inviteForm.mensaje.trim() || null,
-        estado: 'pendiente'
-        })
-
-    if (error) throw error
-
-    // ✅ NUEVO: Generar link de invitación
-    const inviteLink = `${window.location.origin}/aceptar-invitacion?token=${token}`
-
-    // ✅ COPIAR AL PORTAPAPELES
-    navigator.clipboard.writeText(inviteLink)
-
-    alert(`✅ Invitación enviada correctamente\n\n📋 Link copiado al portapapeles:\n${inviteLink}\n\nComparte este link con ${inviteForm.email}`)
-    
-    setShowInviteModal(false)
-    setInviteForm({ email: '', rol: 'colaborador', mensaje: '' })
-    checkPlanAndLoadData()
-    }
-
-    
-  
+  }
 
   const handleCancelInvitation = async (invitacionId) => {
     if (!confirm('¿Cancelar esta invitación?')) return
@@ -279,7 +257,7 @@ const checkPlanAndLoadData = async () => {
               </ul>
               <button
                 style={styles.upgradeButton}
-                onClick={() => navigate('/suscripcion')}
+                onClick={() => navigate('/planes')}
               >
                 Actualizar a Enterprise
               </button>
