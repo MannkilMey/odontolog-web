@@ -14,19 +14,36 @@ export default function DashboardEquipoScreen() {
     loadData()
   }, [periodo])
 
+  // Reemplazar la función loadData completa:
   const loadData = async () => {
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
 
       // Verificar plan
-      const { data: suscripcion } = await supabase
+      const { data: suscripcion, error: subError } = await supabase
         .from('suscripciones_usuarios')
         .select('plan:planes_suscripcion(permite_multi_perfil)')
         .eq('dentista_id', user.id)
         .single()
 
-      if (!suscripcion?.plan?.permite_multi_perfil) {
+      // ✅ MANEJAR ERRORES
+      if (subError) {
+        console.error('Error al cargar suscripción:', subError)
+        setIsEnterprise(false)
+        setLoading(false)
+        return
+      }
+
+      // ✅ VERIFICAR QUE EXISTA PLAN
+      if (!suscripcion || !suscripcion.plan) {
+        console.error('No se encontró plan de suscripción')
+        setIsEnterprise(false)
+        setLoading(false)
+        return
+      }
+
+      if (!suscripcion.plan.permite_multi_perfil) {
         setIsEnterprise(false)
         setLoading(false)
         return
@@ -35,7 +52,7 @@ export default function DashboardEquipoScreen() {
       setIsEnterprise(true)
 
       // Cargar métricas de todos los perfiles
-      const { data: perfilesData, error } = await supabase
+      const { data: perfilesData, error: perfilesError } = await supabase
         .from('perfiles_clinica')
         .select(`
           *,
@@ -44,7 +61,10 @@ export default function DashboardEquipoScreen() {
         .eq('clinica_owner_id', user.id)
         .eq('activo', true)
 
-      if (error) throw error
+      if (perfilesError) {
+        console.error('Error al cargar perfiles:', perfilesError)
+        // Continuar solo con el owner
+      }
 
       // Cargar métricas para cada perfil + el owner
       const dentistas = [
@@ -58,11 +78,28 @@ export default function DashboardEquipoScreen() {
       ]
 
       const metricasPromises = dentistas.map(async (d) => {
-        const { data: metrica } = await supabase
+        const { data: metrica, error: metricaError } = await supabase
           .from('metricas_por_perfil')
           .select('*')
           .eq('dentista_id', d.dentista_id)
           .single()
+
+        if (metricaError) {
+          console.error(`Error al cargar métrica para ${d.nombre}:`, metricaError)
+          // Devolver datos por defecto
+          return {
+            ...d,
+            total_pacientes: 0,
+            ingresos_mes_actual: 0,
+            gastos_mes_actual: 0,
+            ingresos_totales: 0,
+            gastos_totales: 0,
+            balance_total: 0,
+            citas_mes_actual: 0,
+            procedimientos_mes_actual: 0,
+            balance_mes: 0
+          }
+        }
 
         return {
           ...d,
@@ -75,8 +112,8 @@ export default function DashboardEquipoScreen() {
       setMetricas(metricasResueltas)
 
     } catch (error) {
-      console.error('Error:', error)
-      alert('Error al cargar métricas del equipo')
+      console.error('Error general:', error)
+      alert('Error al cargar métricas del equipo: ' + error.message)
     } finally {
       setLoading(false)
     }

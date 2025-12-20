@@ -39,6 +39,8 @@ import ExportarDatosScreen from './pages/ExportarDatosScreen'
 import PlanesScreen from './pages/PlanesScreen'
 import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
+import AceptarInvitacionScreen from './pages/AceptarInvitacionScreen'
+
 
 // ✅ NUEVAS IMPORTACIONES
 import WhatsAppMetricsScreen from './pages/WhatsAppMetricsScreen'
@@ -139,6 +141,8 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/privacidad" element={<PrivacidadPage />} />
       <Route path="/terminos" element={<TerminosPage />} />
+      <Route path="/aceptar-invitacion" element={<AceptarInvitacionScreen />} />
+
       
       {/* Login y Registro */}
       <Route path="/login" element={<LoginScreen />} />
