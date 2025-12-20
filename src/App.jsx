@@ -40,6 +40,7 @@ import PlanesScreen from './pages/PlanesScreen'
 import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
 import AceptarInvitacionScreen from './pages/AceptarInvitacionScreen'
+import ConfiguracionMensajesScreen from './pages/ConfiguracionMensajesScreen'
 
 
 // ✅ NUEVAS IMPORTACIONES
@@ -303,6 +304,10 @@ function App() {
       <Route 
         path="/historial-pagos" 
         element={session ? <HistorialPagosScreen /> : <Navigate to="/login" replace />} 
+      />
+      <Route 
+        path="/configuracion-mensajes" 
+        element={session ? <ConfiguracionMensajesScreen /> : <Navigate to="/login" replace />} 
       />
       
       {/* Panel de Administración */}

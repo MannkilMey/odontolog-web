@@ -17,7 +17,7 @@ export default function DashboardScreen({ session }) {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [modalUpgrade, setModalUpgrade] = useState({ isOpen: false, feature: null })
-  const [planActual, setPlanActual] = useState(null) // ✅ NUEVO
+  const [planActual, setPlanActual] = useState(null)
   const navigate = useNavigate()
 
   // Hook de suscripción
@@ -29,7 +29,7 @@ export default function DashboardScreen({ session }) {
     console.log('Dashboard mounted, loading data...')
     getProfile()
     getStats()
-    checkPlan() // ✅ NUEVO
+    checkPlan()
   }, [])
 
   const getProfile = async () => {
@@ -61,7 +61,6 @@ export default function DashboardScreen({ session }) {
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Verificar plan
   const checkPlan = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -174,11 +173,71 @@ export default function DashboardScreen({ session }) {
           </div>
         </div>
 
-        {/* ✅ NUEVA SECCIÓN: Accesos Rápidos Premium */}
+        {/* ✅ NUEVO: Banner Premium para usuarios Free */}
+        {isFree && (
+          <div style={styles.premiumBanner}>
+            <div style={styles.premiumBannerContent}>
+              <div style={styles.premiumBannerIcon}>⭐</div>
+              <div style={styles.premiumBannerText}>
+                <div style={styles.premiumBannerTitle}>
+                  ¡Potencia tu clínica con Premium!
+                </div>
+                <div style={styles.premiumBannerDescription}>
+                  Automatiza recordatorios por WhatsApp, personaliza mensajes, gestiona reportes y más.
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/planes')}
+                style={styles.premiumBannerButton}
+              >
+                Ver Planes →
+              </button>
+            </div>
+            
+            {/* Características destacadas */}
+            <div style={styles.premiumFeatures}>
+              <div style={styles.premiumFeature}>
+                <div style={styles.featureIconSmall}>📱</div>
+                <div style={styles.featureText}>WhatsApp automático</div>
+              </div>
+              <div style={styles.premiumFeature}>
+                <div style={styles.featureIconSmall}>🤖</div>
+                <div style={styles.featureText}>Recordatorios</div>
+              </div>
+              <div style={styles.premiumFeature}>
+                <div style={styles.featureIconSmall}>📊</div>
+                <div style={styles.featureText}>Reportes</div>
+              </div>
+              <div style={styles.premiumFeature}>
+                <div style={styles.featureIconSmall}>📈</div>
+                <div style={styles.featureText}>Métricas</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ MEJORADO: Accesos Rápidos Premium */}
         {planActual && planActual.codigo !== 'free' && (
           <div style={styles.quickAccessSection}>
-            <div style={styles.sectionTitle}>⚡ Accesos Rápidos Premium</div>
+            <div style={styles.quickAccessHeader}>
+              <div style={styles.sectionTitle}>⚡ Funciones Premium Activas</div>
+              <div style={styles.planBadgeLarge}>
+                {planActual.nombre}
+              </div>
+            </div>
             <div style={styles.quickAccessGrid}>
+              {/* Configuración de Mensajes WhatsApp */}
+              <button
+                onClick={() => navigate('/configuracion-mensajes')}
+                style={styles.quickAccessCard}
+              >
+                <div style={styles.quickAccessIcon}>📱</div>
+                <div style={styles.quickAccessTitle}>Mensajes WhatsApp</div>
+                <div style={styles.quickAccessDescription}>
+                  Personalizar plantillas
+                </div>
+              </button>
+
               {/* Métricas de Mensajería */}
               <button
                 onClick={() => navigate('/metricas-mensajeria')}
@@ -547,7 +606,7 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '16px',
-    marginBottom: '40px',
+    marginBottom: '32px',
   },
   statCard: {
     backgroundColor: '#ffffff',
@@ -568,15 +627,100 @@ const styles = {
     color: '#64748b',
     fontWeight: '500',
   },
-  // ✅ NUEVOS ESTILOS: Accesos Rápidos
+
+  // ✅ NUEVOS ESTILOS: Banner Premium
+  premiumBanner: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    borderRadius: '16px',
+    padding: '24px',
+    marginBottom: '32px',
+    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+  },
+  premiumBannerContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+  },
+  premiumBannerIcon: {
+    fontSize: '48px',
+  },
+  premiumBannerText: {
+    flex: 1,
+    minWidth: '200px',
+  },
+  premiumBannerTitle: {
+    fontSize: '24px',
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: '8px',
+  },
+  premiumBannerDescription: {
+    fontSize: '15px',
+    color: '#e0e7ff',
+    lineHeight: '1.5',
+  },
+  premiumBannerButton: {
+    padding: '14px 28px',
+    backgroundColor: '#ffffff',
+    border: 'none',
+    borderRadius: '10px',
+    color: '#5b21b6',
+    fontSize: '16px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    whiteSpace: 'nowrap',
+  },
+  premiumFeatures: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: '12px',
+  },
+  premiumFeature: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '12px 16px',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: '8px',
+    backdropFilter: 'blur(10px)',
+  },
+  featureIconSmall: {
+    fontSize: '24px',
+  },
+  featureText: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+
+  // ✅ MEJORADOS: Accesos Rápidos Premium
   quickAccessSection: {
     marginBottom: '32px',
+  },
+  quickAccessHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+    gap: '12px',
   },
   sectionTitle: {
     fontSize: '20px',
     fontWeight: '700',
     color: '#1f2937',
-    marginBottom: '16px',
+  },
+  planBadgeLarge: {
+    padding: '8px 16px',
+    backgroundColor: '#eff6ff',
+    color: '#1e40af',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '700',
+    border: '2px solid #3b82f6',
   },
   quickAccessGrid: {
     display: 'grid',
@@ -606,6 +750,7 @@ const styles = {
     fontSize: '13px',
     color: '#6b7280',
   },
+
   mainActions: {
     marginTop: '20px',
   },

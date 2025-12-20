@@ -304,6 +304,44 @@ export default function ConfiguracionClinicaScreen() {
               <option value="en">English</option>
             </select>
           </div>
+          {/* Configuración de Mensajes WhatsApp - Solo Premium */}
+            {planActual && planActual.codigo !== 'free' ? (
+              <button
+                onClick={() => navigate('/configuracion-mensajes')}
+                style={styles.configCard}
+              >
+                <div style={styles.configIcon}>📱</div>
+                <div style={styles.configInfo}>
+                  <div style={styles.configTitle}>
+                    Mensajes WhatsApp
+                    <span style={styles.premiumBadge}>⭐ Premium</span>
+                  </div>
+                  <div style={styles.configDescription}>
+                    Personalizar plantillas y nombre del remitente
+                  </div>
+                </div>
+                <div style={styles.configArrow}>→</div>
+              </button>
+            ) : (
+              <div style={{...styles.configCard, ...styles.configCardDisabled}}>
+                <div style={styles.configIcon}>📱</div>
+                <div style={styles.configInfo}>
+                  <div style={styles.configTitle}>
+                    Mensajes WhatsApp
+                    <span style={styles.premiumBadgeLocked}>🔒 Premium</span>
+                  </div>
+                  <div style={styles.configDescription}>
+                    Personaliza tus comunicaciones con plantillas profesionales
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/planes')}
+                  style={styles.upgradeSmallButton}
+                >
+                  Ver Premium
+                </button>
+              </div>
+            )}
 
           {/* Personalización */}
           <div style={styles.section}>
