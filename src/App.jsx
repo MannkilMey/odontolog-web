@@ -41,10 +41,10 @@ import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
 
 // ✅ NUEVAS IMPORTACIONES
-import WhatsAppMetricsScreen from './screens/WhatsAppMetricsScreen'
-import GestionEquipoScreen from './screens/GestionEquipoScreen'
-import DashboardEquipoScreen from './screens/DashboardEquipoScreen'
-import MetricasPerfilScreen from './screens/MetricasPerfilScreen'
+import WhatsAppMetricsScreen from './pages/WhatsAppMetricsScreen'
+import GestionEquipoScreen from './pages/GestionEquipoScreen'
+import DashboardEquipoScreen from './pages/DashboardEquipoScreen'
+import MetricasPerfilScreen from './pages/MetricasPerfilScreen'
 
 function App() {
   const [session, setSession] = useState(null)
