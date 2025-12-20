@@ -39,7 +39,12 @@ import ExportarDatosScreen from './pages/ExportarDatosScreen'
 import PlanesScreen from './pages/PlanesScreen'
 import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
-import { useIsAdmin } from './hooks/useIsAdmin'
+
+// ✅ NUEVAS IMPORTACIONES
+import WhatsAppMetricsScreen from './screens/WhatsAppMetricsScreen'
+import GestionEquipoScreen from './screens/GestionEquipoScreen'
+import DashboardEquipoScreen from './screens/DashboardEquipoScreen'
+import MetricasPerfilScreen from './screens/MetricasPerfilScreen'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -67,13 +72,12 @@ function App() {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      
     }
   }, [session])
 
   // ============================================
-// AUTENTICACIÓN
-// ============================================
+  // AUTENTICACIÓN
+  // ============================================
   useEffect(() => {
     // Obtener sesión actual
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -110,7 +114,7 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [navigate, location.pathname]) // ← Agregar location.pathname
+  }, [navigate, location.pathname])
 
   if (loading) {
     return (
@@ -136,7 +140,7 @@ function App() {
       <Route path="/privacidad" element={<PrivacidadPage />} />
       <Route path="/terminos" element={<TerminosPage />} />
       
-      {/* Login y Registro - SIN redirección automática */}
+      {/* Login y Registro */}
       <Route path="/login" element={<LoginScreen />} />
       <Route path="/register" element={<RegistrationScreen />} />
       <Route path="/registro" element={<RegistrationScreen />} />
@@ -243,6 +247,24 @@ function App() {
       <Route 
         path="/mensajes-enviados" 
         element={session ? <MensajesEnviadosScreen /> : <Navigate to="/login" replace />} 
+      />
+
+      {/* ✅ NUEVAS RUTAS - Métricas y Equipo */}
+      <Route 
+        path="/metricas-mensajeria" 
+        element={session ? <WhatsAppMetricsScreen /> : <Navigate to="/login" replace />} 
+      />
+      <Route 
+        path="/gestion-equipo" 
+        element={session ? <GestionEquipoScreen /> : <Navigate to="/login" replace />} 
+      />
+      <Route 
+        path="/dashboard-equipo" 
+        element={session ? <DashboardEquipoScreen /> : <Navigate to="/login" replace />} 
+      />
+      <Route 
+        path="/metricas-perfil/:perfilId" 
+        element={session ? <MetricasPerfilScreen /> : <Navigate to="/login" replace />}
       />
 
       {/* Configuración */}

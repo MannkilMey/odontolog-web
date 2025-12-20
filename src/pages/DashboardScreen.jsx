@@ -17,6 +17,7 @@ export default function DashboardScreen({ session }) {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [modalUpgrade, setModalUpgrade] = useState({ isOpen: false, feature: null })
+  const [planActual, setPlanActual] = useState(null) // ✅ NUEVO
   const navigate = useNavigate()
 
   // Hook de suscripción
@@ -28,6 +29,7 @@ export default function DashboardScreen({ session }) {
     console.log('Dashboard mounted, loading data...')
     getProfile()
     getStats()
+    checkPlan() // ✅ NUEVO
   }, [])
 
   const getProfile = async () => {
@@ -56,6 +58,23 @@ export default function DashboardScreen({ session }) {
       console.error('Error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ✅ NUEVA FUNCIÓN: Verificar plan
+  const checkPlan = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { data: suscripcion } = await supabase
+        .from('suscripciones_usuarios')
+        .select('plan:planes_suscripcion(*)')
+        .eq('dentista_id', user.id)
+        .single()
+      
+      setPlanActual(suscripcion?.plan)
+    } catch (error) {
+      console.error('Error:', error)
     }
   }
 
@@ -155,6 +174,65 @@ export default function DashboardScreen({ session }) {
           </div>
         </div>
 
+        {/* ✅ NUEVA SECCIÓN: Accesos Rápidos Premium */}
+        {planActual && planActual.codigo !== 'free' && (
+          <div style={styles.quickAccessSection}>
+            <div style={styles.sectionTitle}>⚡ Accesos Rápidos Premium</div>
+            <div style={styles.quickAccessGrid}>
+              {/* Métricas de Mensajería */}
+              <button
+                onClick={() => navigate('/metricas-mensajeria')}
+                style={styles.quickAccessCard}
+              >
+                <div style={styles.quickAccessIcon}>📊</div>
+                <div style={styles.quickAccessTitle}>Métricas WhatsApp</div>
+                <div style={styles.quickAccessDescription}>
+                  Ver uso de mensajes
+                </div>
+              </button>
+
+              {/* Gestión de Equipo - Solo Enterprise */}
+              {planActual.permite_multi_perfil && (
+                <>
+                  <button
+                    onClick={() => navigate('/gestion-equipo')}
+                    style={styles.quickAccessCard}
+                  >
+                    <div style={styles.quickAccessIcon}>👥</div>
+                    <div style={styles.quickAccessTitle}>Gestión de Equipo</div>
+                    <div style={styles.quickAccessDescription}>
+                      Administrar colaboradores
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/dashboard-equipo')}
+                    style={styles.quickAccessCard}
+                  >
+                    <div style={styles.quickAccessIcon}>📈</div>
+                    <div style={styles.quickAccessTitle}>Dashboard Equipo</div>
+                    <div style={styles.quickAccessDescription}>
+                      Métricas consolidadas
+                    </div>
+                  </button>
+                </>
+              )}
+
+              {/* Configuración de Notificaciones */}
+              <button
+                onClick={() => navigate('/configuracion-notificaciones')}
+                style={styles.quickAccessCard}
+              >
+                <div style={styles.quickAccessIcon}>🔔</div>
+                <div style={styles.quickAccessTitle}>Notificaciones</div>
+                <div style={styles.quickAccessDescription}>
+                  Recordatorios automáticos
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Acciones Principales */}
         <div style={styles.mainActions}>
           <div style={styles.mainActionsTitle}>¿Qué deseas hacer?</div>
@@ -221,7 +299,7 @@ export default function DashboardScreen({ session }) {
               <div style={styles.mainActionSubtitle}>Control de cobranza</div>
             </button>
 
-            {/* ========== BOTONES PREMIUM (desde Historial hacia abajo) ========== */}
+            {/* ========== BOTONES PREMIUM ========== */}
             <button 
               type="button"
               style={styles.mainActionCard}
@@ -466,11 +544,11 @@ const styles = {
     margin: '0 auto',
   },
   statsContainer: {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',  // ✅ CORRECTO
-  gap: '16px',
-  marginBottom: '40px',
-},
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '16px',
+    marginBottom: '40px',
+  },
   statCard: {
     backgroundColor: '#ffffff',
     borderRadius: '16px',
@@ -489,6 +567,44 @@ const styles = {
     fontSize: '14px',
     color: '#64748b',
     fontWeight: '500',
+  },
+  // ✅ NUEVOS ESTILOS: Accesos Rápidos
+  quickAccessSection: {
+    marginBottom: '32px',
+  },
+  sectionTitle: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: '16px',
+  },
+  quickAccessGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '16px',
+  },
+  quickAccessCard: {
+    padding: '20px',
+    backgroundColor: '#ffffff',
+    border: '2px solid #e5e7eb',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    textAlign: 'center',
+  },
+  quickAccessIcon: {
+    fontSize: '40px',
+    marginBottom: '12px',
+  },
+  quickAccessTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: '8px',
+  },
+  quickAccessDescription: {
+    fontSize: '13px',
+    color: '#6b7280',
   },
   mainActions: {
     marginTop: '20px',
