@@ -27,7 +27,6 @@ export default function DashboardEquipoScreen() {
         .eq('dentista_id', user.id)
         .single()
 
-      // ✅ MANEJAR ERRORES
       if (subError) {
         console.error('Error al cargar suscripción:', subError)
         setIsEnterprise(false)
@@ -35,7 +34,6 @@ export default function DashboardEquipoScreen() {
         return
       }
 
-      // ✅ VERIFICAR QUE EXISTA PLAN
       if (!suscripcion || !suscripcion.plan) {
         console.error('No se encontró plan de suscripción')
         setIsEnterprise(false)
@@ -51,19 +49,18 @@ export default function DashboardEquipoScreen() {
 
       setIsEnterprise(true)
 
-      // Cargar métricas de todos los perfiles
+      // ✅ CORRECCIÓN: Especificar FK
       const { data: perfilesData, error: perfilesError } = await supabase
         .from('perfiles_clinica')
         .select(`
           *,
-          dentista:dentistas(id, nombre, apellido, email)
+          dentista:dentistas!perfiles_clinica_dentista_id_fkey(id, nombre, apellido, email)
         `)
         .eq('clinica_owner_id', user.id)
         .eq('activo', true)
 
       if (perfilesError) {
         console.error('Error al cargar perfiles:', perfilesError)
-        // Continuar solo con el owner
       }
 
       // Cargar métricas para cada perfil + el owner
@@ -86,7 +83,6 @@ export default function DashboardEquipoScreen() {
 
         if (metricaError) {
           console.error(`Error al cargar métrica para ${d.nombre}:`, metricaError)
-          // Devolver datos por defecto
           return {
             ...d,
             total_pacientes: 0,
@@ -118,7 +114,6 @@ export default function DashboardEquipoScreen() {
       setLoading(false)
     }
   }
-
   const getTotales = () => {
     return {
       pacientes: metricas.reduce((sum, m) => sum + (m.total_pacientes || 0), 0),
