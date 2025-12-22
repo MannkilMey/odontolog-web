@@ -5,7 +5,6 @@ import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailSe
 import EmailPreviewModal from '../components/EmailPreviewModal'
 import { enviarWhatsAppTwilio, verificarLimiteWhatsApp } from '../utils/twilioService'
 
-
 export default function CitaDetailScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -13,20 +12,47 @@ export default function CitaDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [cita, setCita] = useState(null)
   const [paciente, setPaciente] = useState(null)
+  const [dentistaInfo, setDentistaInfo] = useState(null)
   const [modalEmail, setModalEmail] = useState({
-  isOpen: false,
-  emailData: null
-})
+    isOpen: false,
+    emailData: null
+  })
 
   useEffect(() => {
     loadCita()
+    loadDentistaInfo()
   }, [id])
+
+  const loadDentistaInfo = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { data: dentista } = await supabase
+        .from('dentistas')
+        .select('nombre, apellido, clinica')
+        .eq('id', user.id)
+        .single()
+
+      const { data: config } = await supabase
+        .from('configuracion_clinica')
+        .select('nombre_remitente_whatsapp, template_recordatorio_cita')
+        .eq('dentista_id', user.id)
+        .single()
+
+      setDentistaInfo({
+        ...dentista,
+        nombreRemitente: config?.nombre_remitente_whatsapp || dentista?.nombre || 'OdontoLog',
+        template: config?.template_recordatorio_cita
+      })
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
 
   const loadCita = async () => {
     try {
       setLoading(true)
 
-      // Cargar cita con información del paciente
       const { data: citaData, error: citaError } = await supabase
         .from('citas')
         .select(`
@@ -132,6 +158,162 @@ export default function CitaDetailScreen() {
     }
   }
 
+  // ✅ FUNCIÓN PARA REEMPLAZAR VARIABLES EN TEMPLATE
+  const reemplazarVariables = (template, vars) => {
+    let resultado = template
+    Object.entries(vars).forEach(([key, value]) => {
+      const regex = new RegExp(`\\{${key}\\}`, 'g')
+      resultado = resultado.replace(regex, value || '')
+    })
+    return resultado
+  }
+
+  const enviarRecordatorioWhatsApp = async () => {
+    try {
+      if (!paciente || !paciente.telefono) {
+        alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
+
+      const limite = await verificarLimiteWhatsApp()
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
+        return
+      }
+
+      const fechaCita = new Date(cita.fecha_cita)
+      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      })
+
+      // ✅ PREPARAR VARIABLES
+      const templateVars = {
+        paciente: paciente.nombre,
+        fecha: fechaFormateada,
+        hora: cita.hora_inicio.slice(0,5),
+        clinica: dentistaInfo?.clinica || 'Nuestra Clínica',
+        doctor: dentistaInfo?.nombreRemitente || 'OdontoLog'
+      }
+
+      // ✅ USAR TEMPLATE O MENSAJE DEFAULT
+      let mensaje = ''
+      if (dentistaInfo?.template) {
+        mensaje = reemplazarVariables(dentistaInfo.template, templateVars)
+      } else {
+        mensaje = `Hola ${paciente.nombre},
+
+🔔 *Recordatorio de Cita*
+
+📅 Fecha: ${fechaFormateada}
+🕐 Hora: ${cita.hora_inicio.slice(0,5)}
+📋 Motivo: ${cita.motivo || 'Consulta general'}
+
+Por favor confirme su asistencia.
+
+Responde:
+✅ SÍ para confirmar
+❌ NO para cancelar
+📅 REPROGRAMAR para cambiar fecha
+
+Saludos,
+${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
+      }
+
+      const resultado = await enviarWhatsAppTwilio({
+        to: paciente.telefono,
+        mensaje,
+        pacienteId: paciente.id,
+        tipo: 'recordatorio_cita'
+      })
+
+      alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
+    }
+  }
+
+  const enviarRecordatorioEmail = async () => {
+    try {
+      if (!paciente || !paciente.email) {
+        alert('⚠️ Este paciente no tiene email registrado')
+        return
+      }
+
+      const fechaCita = new Date(cita.fecha_cita)
+      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      })
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 32px;">🔔 Recordatorio de Cita</h1>
+          </div>
+          
+          <div style="padding: 40px 30px; background: white;">
+            <h2 style="color: #1f2937; margin-bottom: 20px;">¡No olvide su cita!</h2>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Hola <strong>${paciente.nombre}</strong>,
+            </p>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Este es un recordatorio de su cita dental:
+            </p>
+            
+            <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="color: #92400e; margin: 5px 0;">
+                <strong>📅 Fecha:</strong> ${fechaFormateada}
+              </p>
+              <p style="color: #92400e; margin: 5px 0;">
+                <strong>🕐 Hora:</strong> ${cita.hora_inicio.slice(0,5)}
+              </p>
+              <p style="color: #92400e; margin: 5px 0;">
+                <strong>📋 Motivo:</strong> ${cita.motivo || 'Consulta general'}
+              </p>
+            </div>
+            
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Por favor confirme su asistencia o avísenos si necesita reprogramar.
+            </p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                ¡Lo esperamos!<br>
+                <strong>${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      `
+
+      setModalEmail({
+        isOpen: true,
+        emailData: {
+          tipo: 'email',
+          tipoLabel: 'Recordatorio de Cita',
+          destinatario: paciente.email,
+          asunto: `🔔 Recordatorio: Cita ${fechaFormateada} a las ${cita.hora_inicio.slice(0,5)}`,
+          html: html,
+          onConfirm: async () => {
+            await enviarRecordatorioCita(cita, paciente)
+            loadCita()
+          }
+        }
+      })
+
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al preparar recordatorio: ' + error.message)
+    }
+  }
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('es-ES', {
       weekday: 'long',
@@ -167,133 +349,6 @@ export default function CitaDetailScreen() {
       no_asistio: 'No Asistió'
     }
     return labels[estado] || estado
-  }
-  const enviarRecordatorioEmail = async () => {
-  try {
-    if (!paciente || !paciente.email) {
-      alert('⚠️ Este paciente no tiene email registrado')
-      return
-    }
-
-    const fechaCita = new Date(cita.fecha_cita)
-    const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
-
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 32px;">🔔 Recordatorio de Cita</h1>
-        </div>
-        
-        <div style="padding: 40px 30px; background: white;">
-          <h2 style="color: #1f2937; margin-bottom: 20px;">¡No olvide su cita!</h2>
-          
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-            Hola <strong>${paciente.nombre}</strong>,
-          </p>
-          
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-            Este es un recordatorio de su cita dental:
-          </p>
-          
-          <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <p style="color: #92400e; margin: 5px 0;">
-              <strong>📅 Fecha:</strong> ${fechaFormateada}
-            </p>
-            <p style="color: #92400e; margin: 5px 0;">
-              <strong>🕐 Hora:</strong> ${formatTime(cita.hora_inicio)}
-            </p>
-            <p style="color: #92400e; margin: 5px 0;">
-              <strong>📋 Motivo:</strong> ${cita.motivo || 'Consulta general'}
-            </p>
-          </div>
-          
-          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-            Por favor confirme su asistencia o avísenos si necesita reprogramar.
-          </p>
-          
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 14px; margin: 0;">
-              ¡Lo esperamos!<br>
-              <strong>Equipo OdontoLog</strong>
-            </p>
-          </div>
-        </div>
-      </div>
-    `
-
-    setModalEmail({
-      isOpen: true,
-      emailData: {
-        tipo: 'email',
-        tipoLabel: 'Recordatorio de Cita',
-        destinatario: paciente.email,
-        asunto: `🔔 Recordatorio: Cita ${fechaFormateada} a las ${formatTime(cita.hora_inicio)}`,
-        html: html,
-        onConfirm: async () => {
-          await enviarRecordatorioCita(cita, paciente)
-          loadCita()
-        }
-      }
-    })
-
-  } catch (error) {
-    console.error('Error:', error)
-    alert('Error al preparar recordatorio: ' + error.message)
-  }
-}
-
-  const enviarRecordatorioWhatsApp = async () => {
-    try {
-      if (!paciente || !paciente.telefono) {
-        alert('⚠️ Este paciente no tiene teléfono registrado')
-        return
-      }
-
-      // ✅ VERIFICAR LÍMITE PRIMERO
-      const limite = await verificarLimiteWhatsApp()
-      if (!limite.permitido) {
-        alert(`❌ ${limite.mensaje}`)
-        return
-      }
-
-      const fechaCita = new Date(cita.fecha_cita)
-      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long'
-      })
-
-      const mensaje = `Hola ${paciente.nombre},
-
-  🔔 *Recordatorio de Cita*
-
-  📅 Fecha: ${fechaFormateada}
-  🕐 Hora: ${formatTime(cita.hora_inicio)}
-  📋 Motivo: ${cita.motivo || 'Consulta general'}
-
-  Por favor confirme su asistencia o avísenos si necesita reprogramar.
-
-  ¡Lo esperamos!
-  Equipo OdontoLog`
-
-      // ✅ ENVIAR VÍA TWILIO
-      const resultado = await enviarWhatsAppTwilio({
-        to: paciente.telefono,
-        mensaje,
-        pacienteId: paciente.id,
-        tipo: 'recordatorio_cita'
-      })
-
-      alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
-
-    } catch (error) {
-      console.error('Error:', error)
-      alert('❌ Error al enviar WhatsApp: ' + error.message)
-    }
   }
 
   if (loading) {
@@ -338,6 +393,13 @@ export default function CitaDetailScreen() {
           }}>
             {getEstadoLabel(cita.estado)}
           </div>
+          
+          {/* ✅ MOSTRAR SI FUE CONFIRMADA POR WHATSAPP */}
+          {cita.confirmada_por_whatsapp && (
+            <div style={styles.confirmadaWhatsApp}>
+              ✅ Confirmada por WhatsApp
+            </div>
+          )}
         </div>
 
         {/* Información de la Cita */}
@@ -403,7 +465,7 @@ export default function CitaDetailScreen() {
           </div>
         </div>
 
-       {/* Botones de Recordatorio */}
+        {/* Botones de Recordatorio */}
         <div style={styles.section}>
           <div style={styles.sectionTitle}>📬 Enviar Recordatorio</div>
           
@@ -440,13 +502,14 @@ export default function CitaDetailScreen() {
             🗑️ Eliminar Cita
           </button>
         </div>
-    {/* Modal de Confirmación de Email */}
-    <EmailPreviewModal
-      isOpen={modalEmail.isOpen}
-      onClose={() => setModalEmail({ isOpen: false, emailData: null })}
-      onConfirm={modalEmail.emailData?.onConfirm}
-      emailData={modalEmail.emailData || {}}
-    />
+
+        {/* Modal de Email */}
+        <EmailPreviewModal
+          isOpen={modalEmail.isOpen}
+          onClose={() => setModalEmail({ isOpen: false, emailData: null })}
+          onConfirm={modalEmail.emailData?.onConfirm}
+          emailData={modalEmail.emailData || {}}
+        />
       </div>
 
       {/* Footer */}
@@ -532,6 +595,12 @@ const styles = {
     fontWeight: '600',
     color: '#ffffff',
     textTransform: 'capitalize',
+  },
+  confirmadaWhatsApp: {
+    marginTop: '12px',
+    fontSize: '14px',
+    color: '#10b981',
+    fontWeight: '600',
   },
   section: {
     backgroundColor: '#ffffff',
@@ -621,6 +690,11 @@ const styles = {
     fontSize: '24px',
     color: '#9ca3af',
   },
+  recordatorioButtons: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
   actionsSection: {
     display: 'flex',
     flexDirection: 'column',
@@ -647,9 +721,4 @@ const styles = {
     color: '#94a3b8',
     fontStyle: 'italic',
   },
-  recordatorioButtons: {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-},
 }

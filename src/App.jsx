@@ -41,6 +41,8 @@ import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
 import AceptarInvitacionScreen from './pages/AceptarInvitacionScreen'
 import ConfiguracionMensajesScreen from './pages/ConfiguracionMensajesScreen'
+import NotificacionesScreen from './pages/NotificacionesScreen'
+
 
 
 // ✅ NUEVAS IMPORTACIONES
@@ -226,6 +228,10 @@ function App() {
       <Route 
         path="/gastos" 
         element={session ? <GastosScreen /> : <Navigate to="/login" replace />} 
+      />
+      <Route 
+        path="/notificaciones" 
+        element={session ? <NotificacionesScreen /> : <Navigate to="/login" replace />} 
       />
 
       {/* Reportes e Historial */}

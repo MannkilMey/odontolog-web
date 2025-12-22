@@ -5,6 +5,7 @@ import { useSuscripcion } from '../hooks/useSuscripcion'
 import CitasProximasPopup from '../components/CitasProximasPopup'
 import ModalUpgrade from '../components/ModalUpgrade'
 import { useActivityTracker } from '../hooks/useActivityTracker'
+import { useNotificaciones } from '../hooks/useNotificaciones'
 
 export default function DashboardScreen({ session }) {
   console.log('📊 DashboardScreen montado')
@@ -18,6 +19,7 @@ export default function DashboardScreen({ session }) {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [modalUpgrade, setModalUpgrade] = useState({ isOpen: false, feature: null })
   const [planActual, setPlanActual] = useState(null)
+  const { noLeidas } = useNotificaciones()
   const navigate = useNavigate()
 
   // Hook de suscripción
@@ -139,6 +141,21 @@ export default function DashboardScreen({ session }) {
           >
             <span style={styles.refreshText}>{loading ? '↻' : '⟳'}</span>
           </button>
+          
+          {/* ✅ BOTÓN DE NOTIFICACIONES - SOLO PREMIUM */}
+          {isPremium && (
+            <button 
+              type="button"
+              onClick={() => navigate('/notificaciones')}
+              style={styles.notificacionesButton}
+            >
+              🔔
+              {noLeidas > 0 && (
+                <span style={styles.badgeNotificaciones}>{noLeidas}</span>
+              )}
+            </button>
+          )}
+
           <button 
             type="button"
             onClick={() => navigate('/configuracion')}
@@ -567,6 +584,32 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  notificacionesButton: {
+    padding: '8px 12px',
+    backgroundColor: '#3b82f6',
+    borderRadius: '8px',
+    border: 'none',
+    color: '#ffffff',
+    fontSize: '18px',
+    cursor: 'pointer',
+    position: 'relative',
+  },
+  badgeNotificaciones: {
+    position: 'absolute',
+    top: '-4px',
+    right: '-4px',
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    borderRadius: '50%',
+    width: '20px',
+    height: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '11px',
+    fontWeight: '700',
+    border: '2px solid #ffffff',
+  },
   configButton: {
     padding: '8px 12px',
     backgroundColor: '#6b7280',
@@ -627,8 +670,6 @@ const styles = {
     color: '#64748b',
     fontWeight: '500',
   },
-
-  // ✅ NUEVOS ESTILOS: Banner Premium
   premiumBanner: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     borderRadius: '16px',
@@ -695,8 +736,6 @@ const styles = {
     fontWeight: '600',
     color: '#ffffff',
   },
-
-  // ✅ MEJORADOS: Accesos Rápidos Premium
   quickAccessSection: {
     marginBottom: '32px',
   },
@@ -750,7 +789,6 @@ const styles = {
     fontSize: '13px',
     color: '#6b7280',
   },
-
   mainActions: {
     marginTop: '20px',
   },
