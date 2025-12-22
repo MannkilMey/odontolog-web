@@ -96,12 +96,16 @@ export default function CitasProximasPopup() {
     navigate(`/cita/${citaId}`)
   }
 
-  const esCitaPasada = (horaCita) => {
+  // ✅ FUNCIÓN CORREGIDA: Ahora recibe fecha Y hora
+  const esCitaPasada = (fechaCita, horaCita) => {
     const ahora = new Date()
+    
+    // Crear fecha completa de la cita (fecha + hora)
     const [hora, minuto] = horaCita.split(':')
-    const fechaCita = new Date()
-    fechaCita.setHours(parseInt(hora), parseInt(minuto), 0, 0)
-    return fechaCita < ahora
+    const fechaCompleta = new Date(fechaCita + 'T00:00:00') // Parsear la fecha correctamente
+    fechaCompleta.setHours(parseInt(hora), parseInt(minuto), 0, 0)
+    
+    return fechaCompleta < ahora
   }
 
   if (loading || !mostrarPopup) {
@@ -141,7 +145,8 @@ export default function CitasProximasPopup() {
               
               <div style={styles.citasList}>
                 {citasHoy.map((cita, index) => {
-                  const isPasada = esCitaPasada(cita.hora_inicio)
+                  // ✅ AHORA PASA FECHA Y HORA
+                  const isPasada = esCitaPasada(cita.fecha_cita, cita.hora_inicio)
                   
                   return (
                     <div
