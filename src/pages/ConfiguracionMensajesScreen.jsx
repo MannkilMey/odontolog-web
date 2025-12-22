@@ -194,7 +194,8 @@ Saludos,
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <button onClick={() => navigate('/configuracion')} style={styles.backButton}>
+          {/* ✅ CORREGIDO: cambiar '/configuracion' por '/configuracion-clinica' */}
+          <button onClick={() => navigate('/configuracion-clinica')} style={styles.backButton}>
             ← Volver
           </button>
           <div style={styles.title}>📱 Configuración de Mensajes</div>
@@ -223,7 +224,8 @@ Saludos,
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
-        <button onClick={() => navigate('/configuracion')} style={styles.backButton}>
+        {/* ✅ CORREGIDO: cambiar '/configuracion' por '/configuracion-clinica' */}
+        <button onClick={() => navigate('/configuracion-clinica')} style={styles.backButton}>
           ← Volver
         </button>
         <div style={styles.headerInfo}>
