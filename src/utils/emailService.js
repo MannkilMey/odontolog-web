@@ -554,3 +554,84 @@ export const obtenerEstadisticasMensajes = async () => {
     throw error
   }
 }
+/**
+ * ✅ NUEVA FUNCIÓN: Verificar límite de emails antes de enviar
+ */
+export const verificarLimiteMensajes = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { permitido: false, mensaje: 'No autenticado' }
+    }
+
+    const { data: suscripcion, error } = await supabase
+      .from('suscripciones_usuarios')
+      .select(`
+        *,
+        plan:planes_suscripcion(
+          codigo,
+          nombre,
+          limite_emails_mes
+        )
+      `)
+      .eq('dentista_id', user.id)
+      .single()
+
+    if (error || !suscripcion) {
+      return { permitido: false, mensaje: 'Sin suscripción activa' }
+    }
+
+    const limite = suscripcion.plan.limite_emails_mes
+    const usado = suscripcion.emails_usados_mes || 0
+
+    // Verificar límite
+    if (limite !== null && usado >= limite) {
+      return {
+        permitido: false,
+        mensaje: `Has alcanzado el límite de ${limite} emails/mes.\nUsados: ${usado}\n\nActualiza tu plan para enviar más mensajes.`,
+        usado,
+        limite,
+        planActual: suscripcion.plan.nombre
+      }
+    }
+
+    return {
+      permitido: true,
+      usado,
+      limite,
+      restantes: limite ? limite - usado : 'Ilimitados',
+      planActual: suscripcion.plan.nombre
+    }
+
+  } catch (error) {
+    console.error('Error verificando límite de emails:', error)
+    return { permitido: true } // Fail-safe
+  }
+}
+
+/**
+ * ✅ NUEVA FUNCIÓN: Incrementar contador de emails después de envío exitoso
+ */
+export const incrementarContadorMensajes = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: suscripcion } = await supabase
+      .from('suscripciones_usuarios')
+      .select('emails_usados_mes')
+      .eq('dentista_id', user.id)
+      .single()
+
+    const nuevoContador = (suscripcion?.emails_usados_mes || 0) + 1
+
+    await supabase
+      .from('suscripciones_usuarios')
+      .update({ emails_usados_mes: nuevoContador })
+      .eq('dentista_id', user.id)
+
+  } catch (error) {
+    console.error('Error incrementando contador:', error)
+  }
+}

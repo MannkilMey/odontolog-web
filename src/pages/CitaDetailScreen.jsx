@@ -13,6 +13,7 @@ export default function CitaDetailScreen() {
   const [cita, setCita] = useState(null)
   const [paciente, setPaciente] = useState(null)
   const [dentistaInfo, setDentistaInfo] = useState(null)
+  const [isPremium, setIsPremium] = useState(false) // ✅ NUEVO
   const [modalEmail, setModalEmail] = useState({
     isOpen: false,
     emailData: null
@@ -21,7 +22,27 @@ export default function CitaDetailScreen() {
   useEffect(() => {
     loadCita()
     loadDentistaInfo()
+    checkPlan() // ✅ NUEVO
   }, [id])
+
+  // ✅ NUEVA FUNCIÓN: Verificar plan del usuario
+  const checkPlan = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { data: suscripcion } = await supabase
+        .from('suscripciones_usuarios')
+        .select('plan:planes_suscripcion(codigo)')
+        .eq('dentista_id', user.id)
+        .single()
+
+      const esPremium = suscripcion?.plan?.codigo !== 'free'
+      setIsPremium(esPremium)
+      console.log('👤 Usuario es Premium:', esPremium)
+    } catch (error) {
+      console.error('Error verificando plan:', error)
+    }
+  }
 
   const loadDentistaInfo = async () => {
     try {
@@ -168,25 +189,47 @@ export default function CitaDetailScreen() {
     return resultado
   }
 
+  // ✅ CORREGIDO: Enviar WhatsApp con verificación Premium
   const enviarRecordatorioWhatsApp = async () => {
     try {
+      // ✅ VERIFICAR SI ES PREMIUM
+      if (!isPremium) {
+        const confirmar = window.confirm(
+          '⭐ Función Premium\n\n' +
+          'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
+          '¿Deseas ver los planes disponibles?'
+        )
+        if (confirmar) {
+          navigate('/planes')
+        }
+        return
+      }
+
       if (!paciente || !paciente.telefono) {
         alert('⚠️ Este paciente no tiene teléfono registrado')
         return
       }
 
+      console.log('📱 Iniciando envío de WhatsApp...')
+
       const limite = await verificarLimiteWhatsApp()
+      console.log('📊 Verificación de límite:', limite)
+
       if (!limite.permitido) {
         alert(`❌ ${limite.mensaje}`)
         return
       }
 
-      const fechaCita = new Date(cita.fecha_cita)
+      // ✅ CORREGIR FECHA - Agregar hora para evitar timezone issues
+      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
       const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
       })
+
+      console.log('📅 Fecha original:', cita.fecha_cita)
+      console.log('📅 Fecha formateada:', fechaFormateada)
 
       // ✅ PREPARAR VARIABLES
       const templateVars = {
@@ -221,6 +264,9 @@ Saludos,
 ${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
       }
 
+      console.log('📝 Mensaje preparado:', mensaje)
+      console.log('📞 Teléfono destino:', paciente.telefono)
+
       const resultado = await enviarWhatsAppTwilio({
         to: paciente.telefono,
         mensaje,
@@ -228,14 +274,18 @@ ${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
         tipo: 'recordatorio_cita'
       })
 
+      console.log('✅ Resultado del envío:', resultado)
+
       alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
 
     } catch (error) {
-      console.error('Error:', error)
+      console.error('❌ Error completo:', error)
+      console.error('❌ Detalles del error:', error.message)
       alert('❌ Error al enviar WhatsApp: ' + error.message)
     }
   }
 
+  // ✅ CORREGIDO: Enviar Email con fecha correcta
   const enviarRecordatorioEmail = async () => {
     try {
       if (!paciente || !paciente.email) {
@@ -243,7 +293,8 @@ ${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
         return
       }
 
-      const fechaCita = new Date(cita.fecha_cita)
+      // ✅ CORREGIR FECHA
+      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
       const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
         weekday: 'long',
         day: 'numeric',
@@ -314,8 +365,11 @@ ${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
     }
   }
 
+  // ✅ CORREGIDO: Función formatDate
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    // Agregar hora para evitar problemas de timezone
+    const date = new Date(dateString + 'T12:00:00')
+    return date.toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -477,12 +531,22 @@ ${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
               📧 Recordatorio por Email
             </button>
 
+            {/* ✅ BOTÓN WHATSAPP CON INDICADOR PREMIUM */}
             <button
-              style={{...styles.actionButton, backgroundColor: '#25D366'}}
+              style={{
+                ...styles.actionButton, 
+                backgroundColor: isPremium ? '#25D366' : '#9ca3af'
+              }}
               onClick={enviarRecordatorioWhatsApp}
             >
-              📱 Recordatorio por WhatsApp
+              📱 Recordatorio por WhatsApp {!isPremium && '⭐'}
             </button>
+            
+            {!isPremium && (
+              <div style={styles.premiumHint}>
+                ⭐ Esta función está disponible solo para usuarios Premium
+              </div>
+            )}
           </div>
         </div>
 
@@ -694,6 +758,13 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
+  },
+  premiumHint: {
+    fontSize: '12px',
+    color: '#6b7280',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: '4px',
   },
   actionsSection: {
     display: 'flex',
