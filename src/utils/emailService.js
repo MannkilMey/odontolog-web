@@ -99,9 +99,6 @@ export const enviarEmail = async ({
 /**
  * Enviar presupuesto por email
  */
-/**
- * Enviar presupuesto por email
- */
 export const enviarPresupuesto = async (presupuesto, paciente, items) => {
   try {
     // Obtener configuración de la clínica
@@ -554,8 +551,9 @@ export const obtenerEstadisticasMensajes = async () => {
     throw error
   }
 }
+
 /**
- * ✅ NUEVA FUNCIÓN: Verificar límite de emails antes de enviar
+ * ✅ FUNCIÓN CORREGIDA: Verificar límite de emails antes de enviar
  */
 export const verificarLimiteMensajes = async () => {
   try {
@@ -565,34 +563,43 @@ export const verificarLimiteMensajes = async () => {
       return { permitido: false, mensaje: 'No autenticado' }
     }
 
-    const { data: suscripcion, error } = await supabase
+    // ✅ PASO 1: Obtener suscripción del usuario
+    const { data: suscripcion, error: errorSub } = await supabase
       .from('suscripciones_usuarios')
-      .select(`
-        *,
-        plan:planes_suscripcion(
-          codigo,
-          nombre,
-          limite_emails_mes
-        )
-      `)
+      .select('plan_id, emails_usados_mes')
       .eq('dentista_id', user.id)
       .single()
 
-    if (error || !suscripcion) {
+    if (errorSub || !suscripcion) {
+      console.error('Error obteniendo suscripción:', errorSub)
       return { permitido: false, mensaje: 'Sin suscripción activa' }
     }
 
-    const limite = suscripcion.plan.limite_emails_mes
+    // ✅ PASO 2: Obtener datos del plan
+    const { data: plan, error: errorPlan } = await supabase
+      .from('planes_suscripcion')
+      .select('codigo, nombre, limite_emails_mes')
+      .eq('id', suscripcion.plan_id)
+      .single()
+
+    if (errorPlan || !plan) {
+      console.error('Error obteniendo plan:', errorPlan)
+      return { permitido: false, mensaje: 'Error al verificar plan' }
+    }
+
+    const limite = plan.limite_emails_mes
     const usado = suscripcion.emails_usados_mes || 0
 
-    // Verificar límite
+    console.log('📊 Límite de emails:', { limite, usado, plan: plan.nombre })
+
+    // ✅ Verificar límite
     if (limite !== null && usado >= limite) {
       return {
         permitido: false,
         mensaje: `Has alcanzado el límite de ${limite} emails/mes.\nUsados: ${usado}\n\nActualiza tu plan para enviar más mensajes.`,
         usado,
         limite,
-        planActual: suscripcion.plan.nombre
+        planActual: plan.nombre
       }
     }
 
@@ -601,17 +608,17 @@ export const verificarLimiteMensajes = async () => {
       usado,
       limite,
       restantes: limite ? limite - usado : 'Ilimitados',
-      planActual: suscripcion.plan.nombre
+      planActual: plan.nombre
     }
 
   } catch (error) {
     console.error('Error verificando límite de emails:', error)
-    return { permitido: true } // Fail-safe
+    return { permitido: true } // Fail-safe: permitir en caso de error
   }
 }
 
 /**
- * ✅ NUEVA FUNCIÓN: Incrementar contador de emails después de envío exitoso
+ * ✅ FUNCIÓN: Incrementar contador de emails después de envío exitoso
  */
 export const incrementarContadorMensajes = async () => {
   try {
