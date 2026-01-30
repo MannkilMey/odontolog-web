@@ -189,101 +189,78 @@ export default function CitaDetailScreen() {
     return resultado
   }
 
-  // ✅ CORREGIDO: Enviar WhatsApp con verificación Premium
-  const enviarRecordatorioWhatsApp = async () => {
-    try {
-      // ✅ VERIFICAR SI ES PREMIUM
-      if (!isPremium) {
-        const confirmar = window.confirm(
-          '⭐ Función Premium\n\n' +
-          'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
-          '¿Deseas ver los planes disponibles?'
-        )
-        if (confirmar) {
-          navigate('/planes')
+  // ✅ ACTUALIZADO: Enviar WhatsApp usando Content Template
+    const enviarRecordatorioWhatsApp = async () => {
+      try {
+        // ✅ VERIFICAR SI ES PREMIUM
+        if (!isPremium) {
+          const confirmar = window.confirm(
+            '⭐ Función Premium\n\n' +
+            'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
+            '¿Deseas ver los planes disponibles?'
+          )
+          if (confirmar) {
+            navigate('/planes')
+          }
+          return
         }
-        return
+
+        if (!paciente || !paciente.telefono) {
+          alert('⚠️ Este paciente no tiene teléfono registrado')
+          return
+        }
+
+        console.log('📱 Iniciando envío de WhatsApp con template...')
+
+        const limite = await verificarLimiteWhatsApp()
+        console.log('📊 Verificación de límite:', limite)
+
+        if (!limite.permitido) {
+          alert(`❌ ${limite.mensaje}`)
+          return
+        }
+
+        // Preparar fecha
+        const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
+        const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long'
+        })
+
+        console.log('📅 Fecha:', fechaFormateada)
+        console.log('🕐 Hora:', cita.hora_inicio.slice(0,5))
+
+        // ✅ USAR TEMPLATE CON VARIABLES (formato Twilio)
+        const variables = {
+          "1": paciente.nombre,
+          "2": fechaFormateada,
+          "3": cita.hora_inicio.slice(0,5),
+          "4": dentistaInfo?.clinica || 'Nuestra Clínica',
+          "5": dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'
+        }
+
+        console.log('📝 Variables del template:', variables)
+
+        const resultado = await enviarWhatsAppTemplate({
+          to: paciente.telefono,
+          tipo: 'recordatorio_cita',
+          variables: variables,
+          pacienteId: paciente.id
+        })
+
+        console.log('✅ Resultado:', resultado)
+
+        alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
+
+        // Recargar la cita para actualizar el estado
+        loadCita()
+
+      } catch (error) {
+        console.error('❌ Error completo:', error)
+        alert('❌ Error al enviar WhatsApp: ' + error.message)
       }
-
-      if (!paciente || !paciente.telefono) {
-        alert('⚠️ Este paciente no tiene teléfono registrado')
-        return
-      }
-
-      console.log('📱 Iniciando envío de WhatsApp...')
-
-      const limite = await verificarLimiteWhatsApp()
-      console.log('📊 Verificación de límite:', limite)
-
-      if (!limite.permitido) {
-        alert(`❌ ${limite.mensaje}`)
-        return
-      }
-
-      // ✅ CORREGIR FECHA - Agregar hora para evitar timezone issues
-      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long'
-      })
-
-      console.log('📅 Fecha original:', cita.fecha_cita)
-      console.log('📅 Fecha formateada:', fechaFormateada)
-
-      // ✅ PREPARAR VARIABLES
-      const templateVars = {
-        paciente: paciente.nombre,
-        fecha: fechaFormateada,
-        hora: cita.hora_inicio.slice(0,5),
-        clinica: dentistaInfo?.clinica || 'Nuestra Clínica',
-        doctor: dentistaInfo?.nombreRemitente || 'OdontoLog'
-      }
-
-      // ✅ USAR TEMPLATE O MENSAJE DEFAULT
-      let mensaje = ''
-      if (dentistaInfo?.template) {
-        mensaje = reemplazarVariables(dentistaInfo.template, templateVars)
-      } else {
-        mensaje = `Hola ${paciente.nombre},
-
-🔔 *Recordatorio de Cita*
-
-📅 Fecha: ${fechaFormateada}
-🕐 Hora: ${cita.hora_inicio.slice(0,5)}
-📋 Motivo: ${cita.motivo || 'Consulta general'}
-
-Por favor confirme su asistencia.
-
-Responde:
-✅ SÍ para confirmar
-❌ NO para cancelar
-📅 REPROGRAMAR para cambiar fecha
-
-Saludos,
-${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}`
-      }
-
-      console.log('📝 Mensaje preparado:', mensaje)
-      console.log('📞 Teléfono destino:', paciente.telefono)
-
-      const resultado = await enviarWhatsAppTwilio({
-        to: paciente.telefono,
-        mensaje,
-        pacienteId: paciente.id,
-        tipo: 'recordatorio_cita'
-      })
-
-      console.log('✅ Resultado del envío:', resultado)
-
-      alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
-
-    } catch (error) {
-      console.error('❌ Error completo:', error)
-      console.error('❌ Detalles del error:', error.message)
-      alert('❌ Error al enviar WhatsApp: ' + error.message)
     }
-  }
 
   // ✅ CORREGIDO: Enviar Email con fecha correcta
   const enviarRecordatorioEmail = async () => {
