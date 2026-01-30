@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailService'
 import EmailPreviewModal from '../components/EmailPreviewModal'
-import { enviarWhatsAppTwilio, verificarLimiteWhatsApp } from '../utils/twilioService'
+import { enviarWhatsAppTemplate, enviarWhatsAppTwilio, verificarLimiteWhatsApp } from '../utils/twilioService'
 
 export default function CitaDetailScreen() {
   const { id } = useParams()
