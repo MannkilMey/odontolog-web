@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailService'
 import EmailPreviewModal from '../components/EmailPreviewModal'
+import { enviarWhatsAppTemplate, verificarLimiteWhatsApp } from '../utils/twilioService'
 
 export default function CalendarioScreen() {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function CalendarioScreen() {
   const [pacientes, setPacientes] = useState([])
   const [vistaActual, setVistaActual] = useState('dia') // 'dia', 'semana', 'mes'
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date())
+  const [isPremium, setIsPremium] = useState(false)
   const [modalEmail, setModalEmail] = useState({
     isOpen: false,
     emailData: null
@@ -18,7 +20,36 @@ export default function CalendarioScreen() {
 
   useEffect(() => {
     loadData()
+    checkPlan()
   }, [fechaSeleccionada, vistaActual])
+
+  const checkPlan = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      const { data: suscripcion } = await supabase
+        .from('suscripciones_usuarios')
+        .select('plan_id')
+        .eq('dentista_id', user.id)
+        .single()
+
+      if (!suscripcion) {
+        setIsPremium(false)
+        return
+      }
+
+      const { data: plan } = await supabase
+        .from('planes_suscripcion')
+        .select('codigo')
+        .eq('id', suscripcion.plan_id)
+        .single()
+
+      setIsPremium(plan?.codigo !== 'free')
+    } catch (error) {
+      console.error('Error verificando plan:', error)
+      setIsPremium(false)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -100,7 +131,7 @@ export default function CalendarioScreen() {
   }
 
   const formatDateDisplay = (dateString) => {
-  return new Date(dateString + 'T12:00:00').toLocaleDateString('es-ES', {
+    return new Date(dateString + 'T12:00:00').toLocaleDateString('es-ES', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -259,8 +290,30 @@ export default function CalendarioScreen() {
 
   const enviarRecordatorioWhatsApp = async (cita) => {
     try {
+      // ✅ VERIFICAR PLAN PREMIUM
+      if (!isPremium) {
+        const confirmar = window.confirm(
+          '⭐ Función Premium\n\n' +
+          'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
+          '¿Deseas ver los planes disponibles?'
+        )
+        if (confirmar) {
+          navigate('/planes')
+        }
+        return
+      }
+
       if (!cita.pacientes || !cita.pacientes.telefono) {
         alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
+
+      console.log('📱 Iniciando envío de WhatsApp desde calendario...')
+
+      // Verificar límites
+      const limite = await verificarLimiteWhatsApp()
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
         return
       }
 
@@ -268,17 +321,13 @@ export default function CalendarioScreen() {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: config } = await supabase
         .from('configuracion_clinica')
-        .select('*')
+        .select('nombre_comercial, razon_social, nombre_remitente_whatsapp')
         .eq('dentista_id', user.id)
         .single()
 
       const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
 
-      let telefono = cita.pacientes.telefono.replace(/[^0-9]/g, '')
-      if (!telefono.startsWith('595')) {
-        telefono = '595' + telefono
-      }
-
+      // Preparar fecha
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
       const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
         weekday: 'long',
@@ -286,27 +335,38 @@ export default function CalendarioScreen() {
         month: 'long'
       })
 
-      const mensaje = `Hola ${cita.pacientes.nombre},
+      // ✅ USAR CONTENT TEMPLATE DE TWILIO
+      const variables = {
+        "1": cita.pacientes.nombre,
+        "2": fechaFormateada,
+        "3": formatTime(cita.hora_inicio),
+        "4": nombreClinica,
+        "5": config?.nombre_remitente_whatsapp || 'Equipo OdontoLog'
+      }
 
-🔔 *Recordatorio de Cita*
-${nombreClinica}
+      console.log('📝 Enviando con template aprobado...')
 
-📅 Fecha: ${fechaFormateada}
-🕐 Hora: ${formatTime(cita.hora_inicio)}
-📋 Motivo: ${cita.motivo || 'Consulta general'}
+      const resultado = await enviarWhatsAppTemplate({
+        to: cita.pacientes.telefono,
+        tipo: 'recordatorio_cita',
+        variables: variables,
+        pacienteId: cita.paciente_id
+      })
 
-Por favor confirme su asistencia o avísenos si necesita reprogramar.
+      console.log('✅ WhatsApp enviado:', resultado)
 
-${config?.telefono ? `Tel: ${config.telefono}` : ''}
+      alert(
+        `✅ Recordatorio enviado por WhatsApp\n\n` +
+        `Paciente: ${cita.pacientes.nombre}\n` +
+        `Mensajes usados: ${resultado.usado}/${resultado.limite}`
+      )
 
-¡Lo esperamos!`
-
-      const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`
-      window.open(url, '_blank')
+      // Recargar datos
+      loadData()
 
     } catch (error) {
-      console.error('Error:', error)
-      alert('Error al abrir WhatsApp')
+      console.error('❌ Error al enviar WhatsApp:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
     }
   }
 
@@ -411,6 +471,7 @@ ${config?.telefono ? `Tel: ${config.telefono}` : ''}
             getEstadoLabel={getEstadoLabel}
             enviarRecordatorioEmail={enviarRecordatorioEmail}
             enviarRecordatorioWhatsApp={enviarRecordatorioWhatsApp}
+            isPremium={isPremium}
           />
         )}
 
@@ -451,7 +512,7 @@ ${config?.telefono ? `Tel: ${config.telefono}` : ''}
 }
 
 // Componente Vista Día
-function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstadoLabel, enviarRecordatorioEmail, enviarRecordatorioWhatsApp }) {
+function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstadoLabel, enviarRecordatorioEmail, enviarRecordatorioWhatsApp, isPremium }) {
   const citasDelDia = citas.filter(c => c.fecha_cita === fecha)
 
   if (citasDelDia.length === 0) {
@@ -521,14 +582,17 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
               📧 Email
             </button>
             <button
-              style={{...styles.citaActionButton, backgroundColor: '#25D366'}}
+              style={{
+                ...styles.citaActionButton, 
+                backgroundColor: isPremium ? '#25D366' : '#9ca3af'
+              }}
               onClick={(e) => {
                 e.stopPropagation()
                 enviarRecordatorioWhatsApp(cita)
               }}
-              title="Enviar recordatorio por WhatsApp"
+              title={isPremium ? "Enviar recordatorio por WhatsApp" : "Función Premium"}
             >
-              📱 WhatsApp
+              📱 WhatsApp {!isPremium && '⭐'}
             </button>
             <button
               style={{...styles.citaActionButton, backgroundColor: '#6b7280'}}
