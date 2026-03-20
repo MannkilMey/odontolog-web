@@ -40,13 +40,11 @@ import PlanesScreen from './pages/PlanesScreen'
 import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
 import AceptarInvitacionScreen from './pages/AceptarInvitacionScreen'
-import ConfiguracionMensajesScreen from './pages/ConfiguracionMensajesScreen'
 import NotificacionesScreen from './pages/NotificacionesScreen'
 
 
 
 // ✅ NUEVAS IMPORTACIONES
-import WhatsAppMetricsScreen from './pages/WhatsAppMetricsScreen'
 import GestionEquipoScreen from './pages/GestionEquipoScreen'
 import DashboardEquipoScreen from './pages/DashboardEquipoScreen'
 import MetricasPerfilScreen from './pages/MetricasPerfilScreen'
@@ -261,10 +259,7 @@ function App() {
       />
 
       {/* ✅ NUEVAS RUTAS - Métricas y Equipo */}
-      <Route 
-        path="/metricas-mensajeria" 
-        element={session ? <WhatsAppMetricsScreen /> : <Navigate to="/login" replace />} 
-      />
+      
       <Route 
         path="/gestion-equipo" 
         element={session ? <GestionEquipoScreen /> : <Navigate to="/login" replace />} 
@@ -311,11 +306,7 @@ function App() {
         path="/historial-pagos" 
         element={session ? <HistorialPagosScreen /> : <Navigate to="/login" replace />} 
       />
-      <Route 
-        path="/configuracion-mensajes" 
-        element={session ? <ConfiguracionMensajesScreen /> : <Navigate to="/login" replace />} 
-      />
-      
+        
       {/* Panel de Administración */}
       <Route
         path="/admin" 

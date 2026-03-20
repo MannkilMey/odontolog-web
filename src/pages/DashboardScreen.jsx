@@ -190,7 +190,7 @@ export default function DashboardScreen({ session }) {
           </div>
         </div>
 
-        {/* ✅ NUEVO: Banner Premium para usuarios Free */}
+        {/* ✅ BANNER PREMIUM MODIFICADO */}
         {isFree && (
           <div style={styles.premiumBanner}>
             <div style={styles.premiumBannerContent}>
@@ -200,7 +200,7 @@ export default function DashboardScreen({ session }) {
                   ¡Potencia tu clínica con Premium!
                 </div>
                 <div style={styles.premiumBannerDescription}>
-                  Automatiza recordatorios por WhatsApp, personaliza mensajes, gestiona reportes y más.
+                  Gestiona reportes, métricas avanzadas, recordatorios automáticos y más.
                 </div>
               </div>
               <button
@@ -214,26 +214,26 @@ export default function DashboardScreen({ session }) {
             {/* Características destacadas */}
             <div style={styles.premiumFeatures}>
               <div style={styles.premiumFeature}>
-                <div style={styles.featureIconSmall}>📱</div>
-                <div style={styles.featureText}>WhatsApp automático</div>
+                <div style={styles.featureIconSmall}>📊</div>
+                <div style={styles.featureText}>Reportes</div>
               </div>
               <div style={styles.premiumFeature}>
                 <div style={styles.featureIconSmall}>🤖</div>
                 <div style={styles.featureText}>Recordatorios</div>
               </div>
               <div style={styles.premiumFeature}>
-                <div style={styles.featureIconSmall}>📊</div>
-                <div style={styles.featureText}>Reportes</div>
-              </div>
-              <div style={styles.premiumFeature}>
                 <div style={styles.featureIconSmall}>📈</div>
                 <div style={styles.featureText}>Métricas</div>
+              </div>
+              <div style={styles.premiumFeature}>
+                <div style={styles.featureIconSmall}>💾</div>
+                <div style={styles.featureText}>Backups</div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ✅ MEJORADO: Accesos Rápidos Premium */}
+        {/* ✅ ACCESOS RÁPIDOS PREMIUM MODIFICADOS */}
         {planActual && planActual.codigo !== 'free' && (
           <div style={styles.quickAccessSection}>
             <div style={styles.quickAccessHeader}>
@@ -243,30 +243,6 @@ export default function DashboardScreen({ session }) {
               </div>
             </div>
             <div style={styles.quickAccessGrid}>
-              {/* Configuración de Mensajes WhatsApp */}
-              <button
-                onClick={() => navigate('/configuracion-mensajes')}
-                style={styles.quickAccessCard}
-              >
-                <div style={styles.quickAccessIcon}>📱</div>
-                <div style={styles.quickAccessTitle}>Mensajes WhatsApp</div>
-                <div style={styles.quickAccessDescription}>
-                  Personalizar plantillas
-                </div>
-              </button>
-
-              {/* Métricas de Mensajería */}
-              <button
-                onClick={() => navigate('/metricas-mensajeria')}
-                style={styles.quickAccessCard}
-              >
-                <div style={styles.quickAccessIcon}>📊</div>
-                <div style={styles.quickAccessTitle}>Métricas WhatsApp</div>
-                <div style={styles.quickAccessDescription}>
-                  Ver uso de mensajes
-                </div>
-              </button>
-
               {/* Gestión de Equipo - Solo Enterprise */}
               {planActual.permite_multi_perfil && (
                 <>

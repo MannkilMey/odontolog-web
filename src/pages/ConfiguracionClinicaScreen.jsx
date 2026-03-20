@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { useSuscripcion } from '../hooks/useSuscripcion' // ✅ IMPORTAR
 
 export default function ConfiguracionClinicaScreen() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   const [hasConfig, setHasConfig] = useState(false)
-  const [userId, setUserId] = useState(null) // ✅ AGREGAR
   const [formData, setFormData] = useState({
     razon_social: '',
     nombre_comercial: '',
@@ -24,9 +22,6 @@ export default function ConfiguracionClinicaScreen() {
     color_primario: '#1E40AF',
   })
 
-  // ✅ USAR HOOK DE SUSCRIPCIÓN
-  const { plan: planActual, isPremium, isFree } = useSuscripcion(userId)
-
   useEffect(() => {
     checkConfiguration()
   }, [])
@@ -34,7 +29,6 @@ export default function ConfiguracionClinicaScreen() {
   const checkConfiguration = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      setUserId(user?.id) // ✅ ESTABLECER USER ID
       
       const { data, error } = await supabase
         .from('configuracion_clinica')
@@ -328,7 +322,7 @@ export default function ConfiguracionClinicaScreen() {
             </div>
           </div>
 
-          {/* Configuraciones Adicionales */}
+          {/* ✅ CONFIGURACIONES ADICIONALES SIMPLIFICADAS */}
           <div style={styles.section}>
             <div style={styles.sectionTitle}>⚙️ Configuraciones Adicionales</div>
             
@@ -346,45 +340,6 @@ export default function ConfiguracionClinicaScreen() {
                 </div>
                 <div style={styles.configArrow}>→</div>
               </button>
-
-              {/* ✅ CONFIGURACIÓN DE MENSAJES WHATSAPP - SOLO PREMIUM */}
-              {planActual && planActual.codigo !== 'free' ? (
-                <button
-                  onClick={() => navigate('/configuracion-mensajes')}
-                  style={styles.configCard}
-                >
-                  <div style={styles.configIcon}>📱</div>
-                  <div style={styles.configInfo}>
-                    <div style={styles.configTitle}>
-                      Mensajes WhatsApp
-                      <span style={styles.premiumBadge}>⭐ Premium</span>
-                    </div>
-                    <div style={styles.configDescription}>
-                      Personalizar plantillas y nombre del remitente
-                    </div>
-                  </div>
-                  <div style={styles.configArrow}>→</div>
-                </button>
-              ) : (
-                <div style={{...styles.configCard, ...styles.configCardDisabled}}>
-                  <div style={styles.configIcon}>📱</div>
-                  <div style={styles.configInfo}>
-                    <div style={styles.configTitle}>
-                      Mensajes WhatsApp
-                      <span style={styles.premiumBadgeLocked}>🔒 Premium</span>
-                    </div>
-                    <div style={styles.configDescription}>
-                      Personaliza tus comunicaciones con plantillas profesionales
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate('/planes')}
-                    style={styles.upgradeSmallButton}
-                  >
-                    Ver Premium
-                  </button>
-                </div>
-              )}
 
               <button
                 onClick={() => navigate('/catalogo-procedimientos')}
@@ -628,10 +583,6 @@ const styles = {
     textAlign: 'left',
     width: '100%',
   },
-  configCardDisabled: {
-    cursor: 'default',
-    backgroundColor: '#f3f4f6',
-  },
   configIcon: {
     fontSize: '32px',
     minWidth: '40px',
@@ -658,33 +609,6 @@ const styles = {
     fontSize: '20px',
     color: '#9ca3af',
     minWidth: '24px',
-  },
-  premiumBadge: {
-    padding: '2px 8px',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    borderRadius: '4px',
-    fontSize: '11px',
-    fontWeight: '700',
-  },
-  premiumBadgeLocked: {
-    padding: '2px 8px',
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-    borderRadius: '4px',
-    fontSize: '11px',
-    fontWeight: '700',
-  },
-  upgradeSmallButton: {
-    padding: '8px 16px',
-    backgroundColor: '#3b82f6',
-    border: 'none',
-    borderRadius: '6px',
-    color: '#ffffff',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
   },
   actionsContainer: {
     display: 'flex',
