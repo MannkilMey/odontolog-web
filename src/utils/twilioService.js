@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 const TEMPLATES = {
   recordatorio_cita: 'HXfb9b72d5f8e1ef9582ef2fcd8e8dff39',
   recordatorio_cuota: 'HX5tfOf5cd8dd5d123dcce7e48746e2594',
+  recordatorio_cita_con_links: 'HX6e1a422f37450fec0bf20a10c40ddaa2', // 🆕 NUEVO
 }
 
 /**
@@ -22,6 +23,13 @@ export const enviarWhatsAppTemplate = async ({
       throw new Error('Usuario no autenticado')
     }
 
+    // 🆕 Obtener el access token del usuario
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      throw new Error('No hay sesión activa')
+    }
+
     // Obtener Content SID según el tipo
     const contentSid = TEMPLATES[tipo]
     
@@ -38,7 +46,7 @@ export const enviarWhatsAppTemplate = async ({
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`, // 🆕 Usar access token
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -72,7 +80,7 @@ export const enviarWhatsAppTemplate = async ({
 }
 
 /**
- * Enviar WhatsApp simple (sin template) - Para mensajes de respuesta
+ * Enviar WhatsApp simple (sin template) - Para mensajes con links
  */
 export const enviarWhatsAppSimple = async ({ to, mensaje, pacienteId, tipo }) => {
   try {
@@ -82,14 +90,23 @@ export const enviarWhatsAppSimple = async ({ to, mensaje, pacienteId, tipo }) =>
       throw new Error('Usuario no autenticado')
     }
 
+    // 🆕 Obtener el access token del usuario
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      throw new Error('No hay sesión activa')
+    }
+
     console.log('💬 Enviando mensaje simple')
+    console.log('🔑 Token a enviar:', session.access_token.substring(0, 50) + '...')
+    console.log('👤 Usuario ID:', user.id)
 
     const response = await fetch(
       'https://fuwrayxwjldtawtsljro.supabase.co/functions/v1/enviar-whatsapp-twilio',
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`, // 🆕 Usar access token
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

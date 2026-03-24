@@ -6,6 +6,8 @@ import CitasProximasPopup from '../components/CitasProximasPopup'
 import ModalUpgrade from '../components/ModalUpgrade'
 import { useActivityTracker } from '../hooks/useActivityTracker'
 import { useNotificaciones } from '../hooks/useNotificaciones'
+import ToastNotification from '../components/ToastNotification'
+
 
 export default function DashboardScreen({ session }) {
   console.log('📊 DashboardScreen montado')
@@ -497,6 +499,9 @@ export default function DashboardScreen({ session }) {
         )}
         <div style={styles.footerText}>Diseñado por MCorp</div>
       </div>
+      
+      <ToastNotification />
+
     </div>
   )
 }

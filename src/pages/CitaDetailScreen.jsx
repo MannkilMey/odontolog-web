@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailService'
 import EmailPreviewModal from '../components/EmailPreviewModal'
-import { enviarWhatsAppTemplate, enviarWhatsAppTwilio, verificarLimiteWhatsApp } from '../utils/twilioService'
+import { enviarWhatsAppTemplate, verificarLimiteWhatsApp } from '../utils/twilioService'
+import { generarLinksConfirmacion } from '../utils/confirmacionLinks'
+
 
 export default function CitaDetailScreen() {
   const { id } = useParams()
@@ -13,7 +15,7 @@ export default function CitaDetailScreen() {
   const [cita, setCita] = useState(null)
   const [paciente, setPaciente] = useState(null)
   const [dentistaInfo, setDentistaInfo] = useState(null)
-  const [isPremium, setIsPremium] = useState(false) // ✅ NUEVO
+  const [isPremium, setIsPremium] = useState(false)
   const [modalEmail, setModalEmail] = useState({
     isOpen: false,
     emailData: null
@@ -22,10 +24,9 @@ export default function CitaDetailScreen() {
   useEffect(() => {
     loadCita()
     loadDentistaInfo()
-    checkPlan() // ✅ NUEVO
+    checkPlan()
   }, [id])
 
-  // ✅ NUEVA FUNCIÓN: Verificar plan del usuario
   const checkPlan = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -56,12 +57,13 @@ export default function CitaDetailScreen() {
 
       const { data: config } = await supabase
         .from('configuracion_clinica')
-        .select('nombre_remitente_whatsapp, template_recordatorio_cita')
+        .select('nombre_comercial, razon_social, nombre_remitente_whatsapp, template_recordatorio_cita')
         .eq('dentista_id', user.id)
         .single()
 
       setDentistaInfo({
         ...dentista,
+        nombreClinica: config?.nombre_comercial || config?.razon_social || 'Clínica Dental',
         nombreRemitente: config?.nombre_remitente_whatsapp || dentista?.nombre || 'OdontoLog',
         template: config?.template_recordatorio_cita
       })
@@ -179,90 +181,105 @@ export default function CitaDetailScreen() {
     }
   }
 
-  // ✅ FUNCIÓN PARA REEMPLAZAR VARIABLES EN TEMPLATE
-  const reemplazarVariables = (template, vars) => {
-    let resultado = template
-    Object.entries(vars).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{${key}\\}`, 'g')
-      resultado = resultado.replace(regex, value || '')
-    })
-    return resultado
+  // 🆕 NUEVA FUNCIÓN CON TEMPLATE Y LINKS
+  const enviarRecordatorioWhatsApp = async () => {
+    try {
+      // ✅ VERIFICAR SI ES PREMIUM
+      if (!isPremium) {
+        const confirmar = window.confirm(
+          '⭐ Función Premium\n\n' +
+          'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
+          '¿Deseas ver los planes disponibles?'
+        )
+        if (confirmar) {
+          navigate('/planes')
+        }
+        return
+      }
+
+      if (!paciente || !paciente.telefono) {
+        alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
+
+      console.log('📱 Iniciando envío de WhatsApp con template y links...')
+
+      const limite = await verificarLimiteWhatsApp()
+      console.log('📊 Verificación de límite:', limite)
+
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
+        return
+      }
+
+      // 🆕 GENERAR LINKS DE CONFIRMACIÓN
+      const linksResult = await generarLinksConfirmacion(cita.id, 48) // Expira en 48 horas
+      
+      if (!linksResult.success) {
+        throw new Error('No se pudieron generar links de confirmación')
+      }
+
+      console.log('✅ Links generados:', linksResult)
+
+      // Preparar fecha
+      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
+      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      })
+
+      console.log('📅 Fecha:', fechaFormateada)
+      console.log('🕐 Hora:', cita.hora_inicio.slice(0,5))
+
+      // 🆕 USAR TEMPLATE APROBADO CON LINKS
+      const variables = {
+        "1": paciente.nombre,
+        "2": fechaFormateada,
+        "3": cita.hora_inicio.slice(0,5),
+        "4": dentistaInfo?.nombreClinica || 'Nuestra Clínica',
+        "5": linksResult.confirmarUrl,
+        "6": linksResult.cancelarUrl,
+        "7": dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'
+      }
+
+      console.log('📝 Enviando con template aprobado y links...')
+      console.log('📋 Variables:', variables)
+
+      const resultado = await enviarWhatsAppTemplate({
+        to: paciente.telefono,
+        tipo: 'recordatorio_cita_con_links',
+        variables: variables,
+        pacienteId: paciente.id
+      })
+
+      console.log('✅ WhatsApp con template y links enviado:', resultado)
+
+      alert(
+        `✅ Recordatorio con links enviado por WhatsApp\n\n` +
+        `Paciente: ${paciente.nombre}\n` +
+        `Mensajes usados: ${resultado.usado}/${resultado.limite}\n\n` +
+        `Template aprobado con links de confirmación ✅`
+      )
+
+      // Marcar como recordatorio enviado
+      await supabase
+        .from('citas')
+        .update({ 
+          recordatorio_enviado: true,
+          fecha_recordatorio_enviado: new Date().toISOString()
+        })
+        .eq('id', cita.id)
+
+      // Recargar la cita para actualizar el estado
+      loadCita()
+
+    } catch (error) {
+      console.error('❌ Error completo:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
+    }
   }
 
-  // ✅ ACTUALIZADO: Enviar WhatsApp usando Content Template
-    const enviarRecordatorioWhatsApp = async () => {
-      try {
-        // ✅ VERIFICAR SI ES PREMIUM
-        if (!isPremium) {
-          const confirmar = window.confirm(
-            '⭐ Función Premium\n\n' +
-            'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
-            '¿Deseas ver los planes disponibles?'
-          )
-          if (confirmar) {
-            navigate('/planes')
-          }
-          return
-        }
-
-        if (!paciente || !paciente.telefono) {
-          alert('⚠️ Este paciente no tiene teléfono registrado')
-          return
-        }
-
-        console.log('📱 Iniciando envío de WhatsApp con template...')
-
-        const limite = await verificarLimiteWhatsApp()
-        console.log('📊 Verificación de límite:', limite)
-
-        if (!limite.permitido) {
-          alert(`❌ ${limite.mensaje}`)
-          return
-        }
-
-        // Preparar fecha
-        const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-        const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long'
-        })
-
-        console.log('📅 Fecha:', fechaFormateada)
-        console.log('🕐 Hora:', cita.hora_inicio.slice(0,5))
-
-        // ✅ USAR TEMPLATE CON VARIABLES (formato Twilio)
-        const variables = {
-          "1": paciente.nombre,
-          "2": fechaFormateada,
-          "3": cita.hora_inicio.slice(0,5),
-          "4": dentistaInfo?.clinica || 'Nuestra Clínica',
-          "5": dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'
-        }
-
-        console.log('📝 Variables del template:', variables)
-
-        const resultado = await enviarWhatsAppTemplate({
-          to: paciente.telefono,
-          tipo: 'recordatorio_cita',
-          variables: variables,
-          pacienteId: paciente.id
-        })
-
-        console.log('✅ Resultado:', resultado)
-
-        alert(`✅ Recordatorio enviado por WhatsApp\n\nMensajes usados: ${resultado.usado}/${resultado.limite}`)
-
-        // Recargar la cita para actualizar el estado
-        loadCita()
-
-      } catch (error) {
-        console.error('❌ Error completo:', error)
-        alert('❌ Error al enviar WhatsApp: ' + error.message)
-      }
-    }
-
-  // ✅ CORREGIDO: Enviar Email con fecha correcta
   const enviarRecordatorioEmail = async () => {
     try {
       if (!paciente || !paciente.email) {
@@ -270,7 +287,6 @@ export default function CitaDetailScreen() {
         return
       }
 
-      // ✅ CORREGIR FECHA
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
       const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
         weekday: 'long',
@@ -342,9 +358,7 @@ export default function CitaDetailScreen() {
     }
   }
 
-  // ✅ CORREGIDO: Función formatDate
   const formatDate = (dateString) => {
-    // Agregar hora para evitar problemas de timezone
     const date = new Date(dateString + 'T12:00:00')
     return date.toLocaleDateString('es-ES', {
       weekday: 'long',
@@ -508,7 +522,6 @@ export default function CitaDetailScreen() {
               📧 Recordatorio por Email
             </button>
 
-            {/* ✅ BOTÓN WHATSAPP CON INDICADOR PREMIUM */}
             <button
               style={{
                 ...styles.actionButton, 
@@ -544,7 +557,6 @@ export default function CitaDetailScreen() {
           </button>
         </div>
 
-        {/* Modal de Email */}
         <EmailPreviewModal
           isOpen={modalEmail.isOpen}
           onClose={() => setModalEmail({ isOpen: false, emailData: null })}

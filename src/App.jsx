@@ -42,12 +42,14 @@ import AdminDashboard from './pages/AdminDashboard'
 import AceptarInvitacionScreen from './pages/AceptarInvitacionScreen'
 import NotificacionesScreen from './pages/NotificacionesScreen'
 
-
-
-// ✅ NUEVAS IMPORTACIONES
+// ✅ RUTAS EXISTENTES DE EQUIPO
 import GestionEquipoScreen from './pages/GestionEquipoScreen'
 import DashboardEquipoScreen from './pages/DashboardEquipoScreen'
 import MetricasPerfilScreen from './pages/MetricasPerfilScreen'
+
+// 🆕 NUEVAS IMPORTACIONES - SISTEMA DE CONFIRMACIÓN
+import ConfirmacionExitosaScreen from './pages/ConfirmacionExitosaScreen'
+import CancelacionExitosaScreen from './pages/CancelacionExitosaScreen'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -144,6 +146,9 @@ function App() {
       <Route path="/terminos" element={<TerminosPage />} />
       <Route path="/aceptar-invitacion" element={<AceptarInvitacionScreen />} />
 
+      {/* 🆕 NUEVAS RUTAS - SISTEMA DE CONFIRMACIÓN (PÚBLICAS) */}
+      <Route path="/confirm/:token" element={<ConfirmacionExitosaScreen />} />
+      <Route path="/cancel/:token" element={<CancelacionExitosaScreen />} />
       
       {/* Login y Registro */}
       <Route path="/login" element={<LoginScreen />} />
@@ -258,8 +263,7 @@ function App() {
         element={session ? <MensajesEnviadosScreen /> : <Navigate to="/login" replace />} 
       />
 
-      {/* ✅ NUEVAS RUTAS - Métricas y Equipo */}
-      
+      {/* ✅ RUTAS EXISTENTES - Métricas y Equipo */}
       <Route 
         path="/gestion-equipo" 
         element={session ? <GestionEquipoScreen /> : <Navigate to="/login" replace />} 
