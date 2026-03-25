@@ -50,9 +50,11 @@ export const generarLinksConfirmacion = async (citaId, expiraEnHoras = 48) => {
   }
 }
 
-// Función para procesar confirmación/cancelación
+// Función para procesar confirmación/cancelación - CORREGIDA
 export const procesarConfirmacionLink = async (token, accion) => {
   try {
+    console.log('🔄 Procesando link:', token, 'acción:', accion)
+    
     const { data, error } = await supabase
       .rpc('validar_y_procesar_link_confirmacion', {
         token_input: token,
@@ -60,31 +62,35 @@ export const procesarConfirmacionLink = async (token, accion) => {
       })
     
     if (error) {
+      console.error('❌ Error SQL:', error)
       throw new Error(`Error en procesamiento: ${error.message}`)
     }
+    
+    console.log('📋 Respuesta SQL:', data)
     
     // La función SQL retorna un array con un objeto
     const resultado = data[0]
     
     if (!resultado) {
+      console.error('❌ Sin resultado de SQL')
       return {
         success: false,
-        mensaje: 'No se pudo procesar la solicitud'
+        message: 'No se pudo procesar la solicitud'
       }
     }
     
     return {
       success: resultado.exito,
-      mensaje: resultado.mensaje,
-      citaId: resultado.cita_id,
-      datosCita: resultado.datos_cita
+      message: resultado.mensaje,
+      cita_id: resultado.cita_id,
+      datos_cita: resultado.datos_cita  // ✅ Nombre correcto
     }
     
   } catch (error) {
-    console.error('Error en procesarConfirmacionLink:', error)
+    console.error('❌ Error completo en procesarConfirmacionLink:', error)
     return {
       success: false,
-      mensaje: 'Error interno del servidor'
+      message: 'Error interno del servidor'
     }
   }
 }
