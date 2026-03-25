@@ -636,13 +636,15 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
 }
 
 // Componente Vista Semana
+// Componente Vista Semana - CORREGIDO
 function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, getEstadoColor }) {
   const inicioSemana = new Date(fechaSeleccionada)
   inicioSemana.setDate(fechaSeleccionada.getDate() - fechaSeleccionada.getDay())
   
   const diasSemana = []
   for (let i = 0; i < 7; i++) {
-    const dia = new Date(inicioSemana)
+    // 🆕 CREAR NUEVA FECHA PARA CADA DÍA (no modificar la misma)
+    const dia = new Date(inicioSemana.getTime()) // Crear copia
     dia.setDate(inicioSemana.getDate() + i)
     diasSemana.push(dia)
   }

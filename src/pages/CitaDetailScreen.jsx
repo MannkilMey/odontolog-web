@@ -439,10 +439,16 @@ export default function CitaDetailScreen() {
             {getEstadoLabel(cita.estado)}
           </div>
           
-          {/* ✅ MOSTRAR SI FUE CONFIRMADA POR WHATSAPP */}
+          {/* 🆕 MENSAJE INTELIGENTE SEGÚN ESTADO Y WHATSAPP */}
           {cita.confirmada_por_whatsapp && (
-            <div style={styles.confirmadaWhatsApp}>
-              ✅ Confirmada por WhatsApp
+            <div style={{
+              ...styles.confirmadaWhatsApp,
+              color: cita.estado === 'cancelada' ? '#ef4444' : '#10b981'
+            }}>
+              {cita.estado === 'cancelada' 
+                ? '❌ Cancelada por WhatsApp' 
+                : '✅ Confirmada por WhatsApp'
+              }
             </div>
           )}
         </div>
@@ -652,7 +658,6 @@ const styles = {
   confirmadaWhatsApp: {
     marginTop: '12px',
     fontSize: '14px',
-    color: '#10b981',
     fontWeight: '600',
   },
   section: {
