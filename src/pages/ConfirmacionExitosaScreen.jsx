@@ -15,23 +15,30 @@ export default function ConfirmacionExitosaScreen() {
   }, [token])
 
   const procesarConfirmacion = async () => {
-    try {
-      setLoading(true)
-      
-      const result = await procesarConfirmacionLink(token, 'confirmar')
-      
-      if (result.success) {
-        setResultado(result)
-      } else {
-        setError(result.message)
-      }
-    } catch (error) {
-      console.error('Error al confirmar cita:', error)
-      setError('Error al procesar confirmación')
-    } finally {
-      setLoading(false)
+  try {
+    console.log('🚀 INICIANDO procesarConfirmacion con token:', token) // 🆕 NUEVO LOG
+    setLoading(true)
+    
+    console.log('🔄 Llamando procesarConfirmacionLink...') // 🆕 NUEVO LOG
+    const result = await procesarConfirmacionLink(token, 'confirmar')
+    
+    console.log('📋 Resultado completo:', result) // 🆕 NUEVO LOG
+    
+    if (result.success) {
+      console.log('✅ Success = true, seteando resultado') // 🆕 NUEVO LOG
+      setResultado(result)
+    } else {
+      console.log('❌ Success = false, seteando error:', result.message) // 🆕 NUEVO LOG
+      setError(result.message)
     }
+  } catch (error) {
+    console.error('💥 CATCH Error al confirmar cita:', error) // 🆕 MEJORADO
+    setError('Error al procesar confirmación')
+  } finally {
+    console.log('🏁 Finalizando, setting loading = false') // 🆕 NUEVO LOG
+    setLoading(false)
   }
+}
 
   if (loading) {
     return (
