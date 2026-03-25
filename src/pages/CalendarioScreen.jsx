@@ -637,15 +637,19 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
 
 // Componente Vista Semana
 // Componente Vista Semana - CORREGIDO
+// Componente Vista Semana - CORREGIDO PARA ZONA HORARIA
 function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, getEstadoColor }) {
-  const inicioSemana = new Date(fechaSeleccionada)
-  inicioSemana.setDate(fechaSeleccionada.getDate() - fechaSeleccionada.getDay())
+  // 🆕 CREAR FECHA LIMPIA SIN HORA
+  const fechaLimpia = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), fechaSeleccionada.getDate())
+  
+  // 🆕 CALCULAR INICIO DE SEMANA CON FECHA LIMPIA
+  const inicioSemana = new Date(fechaLimpia)
+  inicioSemana.setDate(fechaLimpia.getDate() - fechaLimpia.getDay())
   
   const diasSemana = []
   for (let i = 0; i < 7; i++) {
-    // 🆕 CREAR NUEVA FECHA PARA CADA DÍA (no modificar la misma)
-    const dia = new Date(inicioSemana.getTime()) // Crear copia
-    dia.setDate(inicioSemana.getDate() + i)
+    // 🆕 USAR CONSTRUCTOR DE FECHA LIMPIA
+    const dia = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + i)
     diasSemana.push(dia)
   }
 
