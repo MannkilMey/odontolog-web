@@ -1,10 +1,42 @@
-# Permitir a todos los bots
+# OdontoLog - robots.txt
 User-agent: *
 Allow: /
+Allow: /login
+Allow: /registro
+Allow: /privacidad
+Allow: /terminos
 
-# Bloquear rutas privadas
+# Bloquear rutas privadas (detrás de login)
 Disallow: /dashboard
+Disallow: /clientes
+Disallow: /paciente/
+Disallow: /editar-paciente/
+Disallow: /agregar-paciente
+Disallow: /calendario
+Disallow: /crear-cita
+Disallow: /cita/
+Disallow: /gastos
+Disallow: /cuentas-por-cobrar
+Disallow: /planes-pago
+Disallow: /crear-plan-pago/
+Disallow: /plan-pago/
+Disallow: /configuracion
+Disallow: /notificaciones
+Disallow: /recordatorios
+Disallow: /reportes
+Disallow: /metricas
+Disallow: /backups
+Disallow: /exportar
+Disallow: /historial-pagos
+Disallow: /historial-procedimientos
+Disallow: /historial-financiero
+Disallow: /mensajes-enviados
+Disallow: /admin
 Disallow: /reset-password
+Disallow: /onboarding
+Disallow: /odontograma/
+Disallow: /presupuesto/
+Disallow: /registrar-pago/
 
 # Sitemap
 Sitemap: https://odontolog.lat/sitemap.xml

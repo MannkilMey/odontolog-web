@@ -96,7 +96,7 @@ export default function RecordatoriosScreen() {
         .eq('metadata->>automatico', 'true')
         .order('fecha_enviado', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (data && !error) {
         setUltimaEjecucion(data.fecha_enviado)

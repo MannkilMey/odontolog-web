@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { generarReciboPDF } from '../utils/pdfGenerator'
 
 export default function PlanPagoDetailScreen() {
-  const { planId } = useParams()
+  const { id: planId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
   

@@ -66,7 +66,6 @@ export default function BackupsScreen() {
       setEjecutando(true)
       const { data: { user } } = await supabase.auth.getUser()
 
-      console.log('💾 Ejecutando backup manual...')
 
       // Llamar a la Edge Function
       const response = await fetch(
@@ -89,7 +88,6 @@ export default function BackupsScreen() {
       }
 
       const data = await response.json()
-      console.log('Resultado:', data)
 
       // Descargar el backup como JSON
       if (data.success) {
@@ -128,9 +126,7 @@ export default function BackupsScreen() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
 
-      console.log(`✅ Backup descargado: ${filename}`)
-      console.log(`📊 Registros totales: ${stats.total_registros}`)
-
+      
     } catch (error) {
       console.error('Error descargando backup:', error)
       alert('Error al descargar el archivo de backup')

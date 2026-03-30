@@ -367,7 +367,6 @@ export default function PacienteDetailScreen() {
           onConfirm: async () => {
             // ✅ Pasar los items (no null)
             await enviarPresupuesto(presupuesto, paciente, items)
-            console.log('✅ Presupuesto enviado correctamente')
             loadPacienteData(paciente.id)
           }
         }
@@ -520,7 +519,6 @@ export default function PacienteDetailScreen() {
           onConfirm: async () => {
             // Llamar a la función de emailService
             await enviarRecibo(pago, paciente)
-            console.log('✅ Recibo enviado correctamente por email')
             loadPacienteData(paciente.id)
           }
         }
@@ -735,7 +733,6 @@ export default function PacienteDetailScreen() {
             title="Crear Presupuesto" 
             icon="📄" 
             onClick={() => {
-              console.log('📄 Navegando a Presupuesto para:', paciente.nombre)
               navigate(`/presupuesto/${paciente.id}`)
             }}
             disabled={false}
@@ -744,7 +741,6 @@ export default function PacienteDetailScreen() {
             title="Registrar Pago" 
             icon="💰" 
             onClick={() => {
-              console.log('💰 Navegando a Registrar Pago para:', paciente.nombre)
               navigate(`/registrar-pago/${paciente.id}`)
             }}
             disabled={false}
@@ -762,7 +758,6 @@ export default function PacienteDetailScreen() {
             title="Ver Odontograma" 
             icon="🦷" 
             onClick={() => {
-              console.log('🦷 Navegando a Odontograma para:', paciente.nombre)
               navigate(`/odontograma/${paciente.id}`, { state: { paciente } })
             }}
             disabled={false}
@@ -772,7 +767,6 @@ export default function PacienteDetailScreen() {
             title="Gestionar Citas" 
             icon="📅" 
             onClick={() => {
-              console.log('📅 Navegando a crear cita para:', paciente.nombre)
               navigate('/crear-cita', { state: { pacienteId: paciente.id } })
             }}
             disabled={false}
@@ -781,7 +775,6 @@ export default function PacienteDetailScreen() {
             title="Ver Fotos y Archivos" 
             icon="📸" 
             onClick={() => {
-              console.log('📁 Navegando a archivos para:', paciente.nombre)
               alert('Próximamente: Fotos y Archivos')
             }}
             disabled={true}
@@ -790,7 +783,6 @@ export default function PacienteDetailScreen() {
             title="Historial Completo" 
             icon="📋" 
             onClick={() => {
-              console.log('📊 Navegando a timeline para:', paciente.nombre)
               navigate(`/timeline/${paciente.id}`, { state: { paciente } })
             }}
             disabled={false}

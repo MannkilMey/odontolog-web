@@ -311,7 +311,6 @@ const enviarRecordatorioWhatsApp = async (cita) => {
       return
     }
 
-    console.log('📱 Iniciando envío de WhatsApp con template y links...')
 
     // Verificar límites
     const limite = await verificarLimiteWhatsApp()
@@ -327,7 +326,6 @@ const enviarRecordatorioWhatsApp = async (cita) => {
       throw new Error('No se pudieron generar links de confirmación')
     }
 
-    console.log('✅ Links generados:', linksResult)
 
     // Cargar config de la clínica
     const { data: { user } } = await supabase.auth.getUser()
@@ -358,8 +356,7 @@ const enviarRecordatorioWhatsApp = async (cita) => {
       "7": config?.nombre_remitente_whatsapp || 'Equipo OdontoLog'
     }
 
-    console.log('📝 Enviando con template aprobado y links...')
-    console.log('📋 Variables:', variables)
+    
 
     const resultado = await enviarWhatsAppTemplate({
       to: cita.pacientes.telefono,
@@ -368,7 +365,6 @@ const enviarRecordatorioWhatsApp = async (cita) => {
       pacienteId: cita.paciente_id
     })
 
-    console.log('✅ WhatsApp con template y links enviado:', resultado)
 
     alert(
       `✅ Recordatorio con links enviado por WhatsApp\n\n` +

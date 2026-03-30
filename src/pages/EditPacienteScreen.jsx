@@ -31,7 +31,6 @@ export default function EditPacienteScreen() {
   }, [id, location.state])
 
   const loadPacienteFromState = (paciente) => {
-    console.log('📋 Loading paciente from state:', paciente)
     setFormData({
       nombre: paciente.nombre || '',
       apellido: paciente.apellido || '',
@@ -47,7 +46,6 @@ export default function EditPacienteScreen() {
 
   const loadPacienteFromDB = async () => {
     try {
-      console.log('📋 Loading paciente from DB, id:', id)
       const { data, error } = await supabase
         .from('pacientes')
         .select('*')
@@ -158,7 +156,6 @@ export default function EditPacienteScreen() {
   }
 
   const handleSave = async () => {
-    console.log('🟢 UPDATE BUTTON CLICKED')
     if (!validateForm()) return
 
     setLoading(true)
@@ -177,7 +174,6 @@ export default function EditPacienteScreen() {
         updated_at: new Date().toISOString(),
       }
 
-      console.log('🟢 Datos a actualizar:', pacienteData)
 
       // Actualizar en Supabase
       const { data, error } = await supabase
@@ -198,7 +194,6 @@ export default function EditPacienteScreen() {
         
         alert(errorMessage)
       } else {
-        console.log('🟢 Paciente actualizado exitosamente:', data)
         
         // Navegar a clientes
         navigate('/clientes')
@@ -217,10 +212,8 @@ export default function EditPacienteScreen() {
   }
 
   const handleCancel = () => {
-    console.log('🔴 CANCEL BUTTON CLICKED')
     
     if (window.confirm('¿Estás seguro? Se perderán los cambios no guardados.')) {
-      console.log('🔴 CANCEL CONFIRMED')
       navigate('/clientes')
     }
   }

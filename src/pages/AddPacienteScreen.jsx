@@ -96,7 +96,6 @@ export default function AddPacienteScreen() {
   }
 
   const handleSave = async () => {
-    console.log('🟢 SAVE BUTTON CLICKED')
     if (!validateForm()) return
 
     setLoading(true)
@@ -123,7 +122,6 @@ export default function AddPacienteScreen() {
         notas_generales: formData.notas_generales.trim() || null,
       }
 
-      console.log('🟢 Datos a enviar:', pacienteData)
 
       // Insertar en Supabase
       const { data, error } = await supabase
@@ -145,7 +143,6 @@ export default function AddPacienteScreen() {
         
         alert(errorMessage)
       } else {
-        console.log('🟢 Paciente guardado exitosamente:', data)
         
         // Navegar al dashboard
         navigate('/dashboard')
@@ -164,17 +161,14 @@ export default function AddPacienteScreen() {
   }
 
   const handleCancel = () => {
-    console.log('🔴 CANCEL BUTTON CLICKED')
     
     // Navigate immediately without alert if no data
     if (!hasFormData()) {
-      console.log('🔴 No form data, navigating immediately')
       navigate('/dashboard')
       return
     }
     
     if (window.confirm('¿Estás seguro? Se perderán los datos ingresados.')) {
-      console.log('🔴 CANCEL CONFIRMED')
       navigate('/dashboard')
     }
   }

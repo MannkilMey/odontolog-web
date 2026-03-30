@@ -44,7 +44,6 @@ export default function ClientesScreen() {
         console.error('Error fetching pacientes:', error)
         alert('Error al cargar pacientes')
       } else {
-        console.log(`📊 Loaded ${data?.length || 0} pacientes`)
         setPacientes(data || [])
         setFilteredPacientes(data || [])
       }
@@ -70,7 +69,6 @@ export default function ClientesScreen() {
         console.error('Error deleting paciente:', error)
         alert('Error al eliminar paciente')
       } else {
-        console.log('✅ Paciente eliminado')
         alert('Paciente eliminado correctamente')
         getPacientes() // Recargar lista
       }

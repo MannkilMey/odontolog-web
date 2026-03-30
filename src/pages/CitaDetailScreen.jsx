@@ -39,7 +39,6 @@ export default function CitaDetailScreen() {
 
       const esPremium = suscripcion?.plan?.codigo !== 'free'
       setIsPremium(esPremium)
-      console.log('👤 Usuario es Premium:', esPremium)
     } catch (error) {
       console.error('Error verificando plan:', error)
     }
@@ -202,10 +201,8 @@ export default function CitaDetailScreen() {
         return
       }
 
-      console.log('📱 Iniciando envío de WhatsApp con template y links...')
 
       const limite = await verificarLimiteWhatsApp()
-      console.log('📊 Verificación de límite:', limite)
 
       if (!limite.permitido) {
         alert(`❌ ${limite.mensaje}`)
@@ -219,7 +216,6 @@ export default function CitaDetailScreen() {
         throw new Error('No se pudieron generar links de confirmación')
       }
 
-      console.log('✅ Links generados:', linksResult)
 
       // Preparar fecha
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
@@ -229,8 +225,7 @@ export default function CitaDetailScreen() {
         month: 'long'
       })
 
-      console.log('📅 Fecha:', fechaFormateada)
-      console.log('🕐 Hora:', cita.hora_inicio.slice(0,5))
+      
 
       // 🆕 USAR TEMPLATE APROBADO CON LINKS
       const variables = {
@@ -243,8 +238,7 @@ export default function CitaDetailScreen() {
         "7": dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'
       }
 
-      console.log('📝 Enviando con template aprobado y links...')
-      console.log('📋 Variables:', variables)
+    
 
       const resultado = await enviarWhatsAppTemplate({
         to: paciente.telefono,
@@ -253,7 +247,6 @@ export default function CitaDetailScreen() {
         pacienteId: paciente.id
       })
 
-      console.log('✅ WhatsApp con template y links enviado:', resultado)
 
       alert(
         `✅ Recordatorio con links enviado por WhatsApp\n\n` +
