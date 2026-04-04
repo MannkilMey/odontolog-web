@@ -5,6 +5,9 @@ import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailSe
 import EmailPreviewModal from '../components/EmailPreviewModal'
 import { enviarWhatsAppTemplate, verificarLimiteWhatsApp } from '../utils/twilioService'
 import { generarLinksConfirmacion } from '../utils/confirmacionLinks'
+import { useSuscripcion } from '../hooks/SuscripcionContext'
+import { useLimitesPlan } from '../hooks/useLimitesPlan'
+import UpgradeModal from '../components/UpgradeModal'
 
 
 export default function CitaDetailScreen() {
@@ -15,34 +18,20 @@ export default function CitaDetailScreen() {
   const [cita, setCita] = useState(null)
   const [paciente, setPaciente] = useState(null)
   const [dentistaInfo, setDentistaInfo] = useState(null)
-  const [isPremium, setIsPremium] = useState(false)
   const [modalEmail, setModalEmail] = useState({
     isOpen: false,
     emailData: null
   })
 
+  // ✅ Contexto y límites
+  const { isPremium } = useSuscripcion()
+  const { verificar, limitInfo, showUpgrade, setShowUpgrade } = useLimitesPlan()
+  const [upgradeTipo, setUpgradeTipo] = useState('emails')
+
   useEffect(() => {
     loadCita()
     loadDentistaInfo()
-    checkPlan()
   }, [id])
-
-  const checkPlan = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      const { data: suscripcion } = await supabase
-        .from('suscripciones_usuarios')
-        .select('plan:planes_suscripcion(codigo)')
-        .eq('dentista_id', user.id)
-        .single()
-
-      const esPremium = suscripcion?.plan?.codigo !== 'free'
-      setIsPremium(esPremium)
-    } catch (error) {
-      console.error('Error verificando plan:', error)
-    }
-  }
 
   const loadDentistaInfo = async () => {
     try {
@@ -180,19 +169,13 @@ export default function CitaDetailScreen() {
     }
   }
 
-  // 🆕 NUEVA FUNCIÓN CON TEMPLATE Y LINKS
   const enviarRecordatorioWhatsApp = async () => {
     try {
-      // ✅ VERIFICAR SI ES PREMIUM
-      if (!isPremium) {
-        const confirmar = window.confirm(
-          '⭐ Función Premium\n\n' +
-          'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
-          '¿Deseas ver los planes disponibles?'
-        )
-        if (confirmar) {
-          navigate('/planes')
-        }
+      // ✅ VERIFICAR LÍMITE DE WHATSAPP
+      const limiteCheck = await verificar('whatsapp')
+      if (!limiteCheck.permitido) {
+        setUpgradeTipo('whatsapp')
+        setShowUpgrade(true)
         return
       }
 
@@ -201,21 +184,18 @@ export default function CitaDetailScreen() {
         return
       }
 
-
       const limite = await verificarLimiteWhatsApp()
-
       if (!limite.permitido) {
         alert(`❌ ${limite.mensaje}`)
         return
       }
 
-      // 🆕 GENERAR LINKS DE CONFIRMACIÓN
-      const linksResult = await generarLinksConfirmacion(cita.id, 48) // Expira en 48 horas
+      // Generar links de confirmación
+      const linksResult = await generarLinksConfirmacion(cita.id, 48)
       
       if (!linksResult.success) {
         throw new Error('No se pudieron generar links de confirmación')
       }
-
 
       // Preparar fecha
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
@@ -225,9 +205,6 @@ export default function CitaDetailScreen() {
         month: 'long'
       })
 
-      
-
-      // 🆕 USAR TEMPLATE APROBADO CON LINKS
       const variables = {
         "1": paciente.nombre,
         "2": fechaFormateada,
@@ -238,15 +215,12 @@ export default function CitaDetailScreen() {
         "7": dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'
       }
 
-    
-
       const resultado = await enviarWhatsAppTemplate({
         to: paciente.telefono,
         tipo: 'recordatorio_cita_con_links',
         variables: variables,
         pacienteId: paciente.id
       })
-
 
       alert(
         `✅ Recordatorio con links enviado por WhatsApp\n\n` +
@@ -255,7 +229,6 @@ export default function CitaDetailScreen() {
         `Template aprobado con links de confirmación ✅`
       )
 
-      // Marcar como recordatorio enviado
       await supabase
         .from('citas')
         .update({ 
@@ -264,7 +237,6 @@ export default function CitaDetailScreen() {
         })
         .eq('id', cita.id)
 
-      // Recargar la cita para actualizar el estado
       loadCita()
 
     } catch (error) {
@@ -277,6 +249,14 @@ export default function CitaDetailScreen() {
     try {
       if (!paciente || !paciente.email) {
         alert('⚠️ Este paciente no tiene email registrado')
+        return
+      }
+
+      // ✅ VERIFICAR LÍMITE DE EMAILS
+      const limiteCheck = await verificar('emails')
+      if (!limiteCheck.permitido) {
+        setUpgradeTipo('emails')
+        setShowUpgrade(true)
         return
       }
 
@@ -432,7 +412,6 @@ export default function CitaDetailScreen() {
             {getEstadoLabel(cita.estado)}
           </div>
           
-          {/* 🆕 MENSAJE INTELIGENTE SEGÚN ESTADO Y WHATSAPP */}
           {cita.confirmada_por_whatsapp && (
             <div style={{
               ...styles.confirmadaWhatsApp,
@@ -533,7 +512,7 @@ export default function CitaDetailScreen() {
             
             {!isPremium && (
               <div style={styles.premiumHint}>
-                ⭐ Esta función está disponible solo para usuarios Premium
+                ⭐ WhatsApp disponible en planes Premium y Enterprise
               </div>
             )}
           </div>
@@ -556,11 +535,22 @@ export default function CitaDetailScreen() {
           </button>
         </div>
 
+        {/* Modal Email */}
         <EmailPreviewModal
           isOpen={modalEmail.isOpen}
           onClose={() => setModalEmail({ isOpen: false, emailData: null })}
           onConfirm={modalEmail.emailData?.onConfirm}
           emailData={modalEmail.emailData || {}}
+        />
+
+        {/* ✅ MODAL DE UPGRADE */}
+        <UpgradeModal
+          isOpen={showUpgrade}
+          onClose={() => setShowUpgrade(false)}
+          tipo={upgradeTipo}
+          usado={limitInfo?.usado || 0}
+          limite={limitInfo?.limite || 0}
+          planActual={limitInfo?.plan || 'Gratuito'}
         />
       </div>
 
@@ -573,210 +563,36 @@ export default function CitaDetailScreen() {
 }
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  loadingContainer: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 24px',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  backButton: {
-    padding: '8px 16px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#6b7280',
-    fontSize: '16px',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  headerInfo: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1e40af',
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#6b7280',
-    marginTop: '4px',
-    textTransform: 'capitalize',
-  },
-  content: {
-    flex: 1,
-    padding: '24px',
-    maxWidth: '800px',
-    width: '100%',
-    margin: '0 auto',
-    overflowY: 'auto',
-  },
-  estadoCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '16px',
-    border: '1px solid #e5e7eb',
-    textAlign: 'center',
-  },
-  estadoLabel: {
-    fontSize: '14px',
-    color: '#6b7280',
-    marginBottom: '12px',
-  },
-  estadoBadge: {
-    display: 'inline-block',
-    padding: '8px 24px',
-    borderRadius: '20px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#ffffff',
-    textTransform: 'capitalize',
-  },
-  confirmadaWhatsApp: {
-    marginTop: '12px',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  section: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '24px',
-    marginBottom: '16px',
-    border: '1px solid #e5e7eb',
-  },
-  sectionTitle: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: '20px',
-  },
-  infoRow: {
-    display: 'flex',
-    marginBottom: '12px',
-    paddingBottom: '12px',
-    borderBottom: '1px solid #f3f4f6',
-  },
-  infoLabel: {
-    flex: '0 0 140px',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: '14px',
-    color: '#1f2937',
-  },
-  notasBox: {
-    marginTop: '16px',
-    padding: '16px',
-    backgroundColor: '#f9fafb',
-    borderRadius: '8px',
-    borderLeft: '3px solid #3b82f6',
-  },
-  notasLabel: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '8px',
-  },
-  notasTexto: {
-    fontSize: '14px',
-    color: '#6b7280',
-    lineHeight: '1.6',
-  },
-  pacienteCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '16px',
-    backgroundColor: '#f9fafb',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  pacienteAvatar: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
-    backgroundColor: '#1e40af',
-    color: '#ffffff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '20px',
-    fontWeight: 'bold',
-  },
-  pacienteInfo: {
-    flex: 1,
-  },
-  pacienteNombre: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: '4px',
-  },
-  pacienteContacto: {
-    fontSize: '13px',
-    color: '#6b7280',
-    marginTop: '4px',
-  },
-  verMas: {
-    fontSize: '24px',
-    color: '#9ca3af',
-  },
-  recordatorioButtons: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  premiumHint: {
-    fontSize: '12px',
-    color: '#6b7280',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: '4px',
-  },
-  actionsSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  actionButton: {
-    padding: '14px',
-    backgroundColor: '#3b82f6',
-    border: 'none',
-    borderRadius: '8px',
-    color: '#ffffff',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  footer: {
-    textAlign: 'center',
-    padding: '16px',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
-  },
-  footerText: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
+  container: { minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' },
+  loadingContainer: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  header: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb' },
+  backButton: { padding: '8px 16px', backgroundColor: 'transparent', border: 'none', color: '#6b7280', fontSize: '16px', fontWeight: '500', cursor: 'pointer' },
+  headerInfo: { flex: 1, textAlign: 'center' },
+  title: { fontSize: '24px', fontWeight: '700', color: '#1e40af' },
+  subtitle: { fontSize: '14px', color: '#6b7280', marginTop: '4px', textTransform: 'capitalize' },
+  content: { flex: 1, padding: '24px', maxWidth: '800px', width: '100%', margin: '0 auto', overflowY: 'auto' },
+  estadoCard: { backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', marginBottom: '16px', border: '1px solid #e5e7eb', textAlign: 'center' },
+  estadoLabel: { fontSize: '14px', color: '#6b7280', marginBottom: '12px' },
+  estadoBadge: { display: 'inline-block', padding: '8px 24px', borderRadius: '20px', fontSize: '16px', fontWeight: '600', color: '#ffffff', textTransform: 'capitalize' },
+  confirmadaWhatsApp: { marginTop: '12px', fontSize: '14px', fontWeight: '600' },
+  section: { backgroundColor: '#ffffff', borderRadius: '12px', padding: '24px', marginBottom: '16px', border: '1px solid #e5e7eb' },
+  sectionTitle: { fontSize: '18px', fontWeight: '700', color: '#1f2937', marginBottom: '20px' },
+  infoRow: { display: 'flex', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f3f4f6' },
+  infoLabel: { flex: '0 0 140px', fontSize: '14px', fontWeight: '500', color: '#6b7280' },
+  infoValue: { flex: 1, fontSize: '14px', color: '#1f2937' },
+  notasBox: { marginTop: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', borderLeft: '3px solid #3b82f6' },
+  notasLabel: { fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' },
+  notasTexto: { fontSize: '14px', color: '#6b7280', lineHeight: '1.6' },
+  pacienteCard: { display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' },
+  pacienteAvatar: { width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#1e40af', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold' },
+  pacienteInfo: { flex: 1 },
+  pacienteNombre: { fontSize: '18px', fontWeight: '700', color: '#1f2937', marginBottom: '4px' },
+  pacienteContacto: { fontSize: '13px', color: '#6b7280', marginTop: '4px' },
+  verMas: { fontSize: '24px', color: '#9ca3af' },
+  recordatorioButtons: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  premiumHint: { fontSize: '12px', color: '#6b7280', fontStyle: 'italic', textAlign: 'center', marginTop: '4px' },
+  actionsSection: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  actionButton: { padding: '14px', backgroundColor: '#3b82f6', border: 'none', borderRadius: '8px', color: '#ffffff', fontSize: '16px', fontWeight: '600', cursor: 'pointer' },
+  footer: { textAlign: 'center', padding: '16px', backgroundColor: '#ffffff', borderTop: '1px solid #e5e7eb' },
+  footerText: { fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' },
 }

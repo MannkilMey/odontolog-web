@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useLimitesPlan } from '../hooks/useLimitesPlan'
+import UpgradeModal from '../components/UpgradeModal'
 
 export default function AddPacienteScreen() {
   const [formData, setFormData] = useState({
@@ -16,8 +18,26 @@ export default function AddPacienteScreen() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  // ✅ LÍMITE DE PACIENTES
+  const { verificar, limitInfo, showUpgrade, setShowUpgrade } = useLimitesPlan()
+  const [limiteWarning, setLimiteWarning] = useState(null)
+
+  // Verificar límite al cargar la pantalla
+  useEffect(() => {
+    const checkLimite = async () => {
+      const result = await verificar('pacientes')
+      if (result && !result.permitido) {
+        // Límite alcanzado — mostrar modal inmediatamente
+        setLimiteWarning(result)
+      } else if (result && result.limite && result.porcentajeUsado >= 80) {
+        // Cerca del límite — mostrar warning sutil
+        setLimiteWarning(result)
+      }
+    }
+    checkLimite()
+  }, [])
+
   const updateField = (field, value) => {
-    // Auto-formatear fecha mientras se escribe
     if (field === 'fecha_nacimiento') {
       value = formatDateInput(value)
     }
@@ -26,16 +46,10 @@ export default function AddPacienteScreen() {
 
   const formatDateInput = (value) => {
     if (!value) return ''
-    
-    // Remover todos los caracteres no numéricos
     const numbers = value.replace(/[^\d]/g, '')
-    
-    // Limitar a 8 dígitos
     if (numbers.length > 8) {
       return formatDateInput(numbers.slice(0, 8))
     }
-    
-    // Formatear automáticamente con barras
     if (numbers.length <= 2) {
       return numbers
     } else if (numbers.length <= 4) {
@@ -58,30 +72,21 @@ export default function AddPacienteScreen() {
       alert('El email debe tener un formato válido')
       return false
     }
-    
-    // Validar formato de fecha si se proporciona
     if (formData.fecha_nacimiento && !isValidDate(formData.fecha_nacimiento)) {
       alert('La fecha debe tener el formato DD/MM/AAAA')
       return false
     }
-    
     return true
   }
 
   const isValidDate = (dateString) => {
-    if (!dateString) return true // Empty is valid
-    
-    // Verificar formato DD/MM/YYYY
+    if (!dateString) return true
     const regex = /^\d{2}\/\d{2}\/\d{4}$/
     if (!regex.test(dateString)) return false
-    
     const parts = dateString.split('/')
     if (parts.length !== 3) return false
-    
     const [day, month, year] = parts
     const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-    
-    // Verificar que la fecha sea válida
     return date.getFullYear() == parseInt(year) && 
            date.getMonth() == parseInt(month) - 1 && 
            date.getDate() == parseInt(day)
@@ -89,8 +94,6 @@ export default function AddPacienteScreen() {
 
   const formatDateForDatabase = (dateString) => {
     if (!dateString || !isValidDate(dateString)) return null
-    
-    // Convertir DD/MM/YYYY a YYYY-MM-DD
     const [day, month, year] = dateString.split('/')
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
   }
@@ -98,10 +101,16 @@ export default function AddPacienteScreen() {
   const handleSave = async () => {
     if (!validateForm()) return
 
+    // ✅ VERIFICAR LÍMITE ANTES DE GUARDAR
+    const limiteCheck = await verificar('pacientes')
+    if (!limiteCheck.permitido) {
+      setShowUpgrade(true)
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Obtener el usuario actual
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
@@ -109,7 +118,6 @@ export default function AddPacienteScreen() {
         return
       }
 
-      // Preparar datos para insertar
       const pacienteData = {
         dentista_id: user.id,
         nombre: formData.nombre.trim(),
@@ -122,17 +130,14 @@ export default function AddPacienteScreen() {
         notas_generales: formData.notas_generales.trim() || null,
       }
 
-
-      // Insertar en Supabase
       const { data, error } = await supabase
         .from('pacientes')
         .insert([pacienteData])
         .select()
 
       if (error) {
-        console.error('🔴 Error saving paciente:', error)
+        console.error('Error saving paciente:', error)
         let errorMessage = 'No se pudo guardar el paciente'
-        
         if (error.code === '22008') {
           errorMessage = 'Error en el formato de fecha. Use DD/MM/AAAA'
         } else if (error.code === '23505') {
@@ -140,20 +145,15 @@ export default function AddPacienteScreen() {
         } else if (error.message) {
           errorMessage = error.message
         }
-        
         alert(errorMessage)
       } else {
-        
-        // Navegar al dashboard
         navigate('/dashboard')
-        
-        // Mostrar mensaje de éxito
         setTimeout(() => {
           alert('¡Paciente agregado correctamente!')
         }, 500)
       }
     } catch (error) {
-      console.error('🔴 Error general:', error)
+      console.error('Error general:', error)
       alert('Algo salió mal. Intenta de nuevo.')
     } finally {
       setLoading(false)
@@ -161,13 +161,10 @@ export default function AddPacienteScreen() {
   }
 
   const handleCancel = () => {
-    
-    // Navigate immediately without alert if no data
     if (!hasFormData()) {
       navigate('/dashboard')
       return
     }
-    
     if (window.confirm('¿Estás seguro? Se perderán los datos ingresados.')) {
       navigate('/dashboard')
     }
@@ -204,10 +201,7 @@ export default function AddPacienteScreen() {
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
-        <button 
-          onClick={handleCancel}
-          style={styles.cancelButton}
-        >
+        <button onClick={handleCancel} style={styles.cancelButton}>
           Cancelar
         </button>
         <div style={styles.headerTitle}>Nuevo Paciente</div>
@@ -219,6 +213,39 @@ export default function AddPacienteScreen() {
           {loading ? 'Guardando...' : 'Guardar'}
         </button>
       </div>
+
+      {/* ✅ WARNING BANNER cuando está cerca del límite */}
+      {limiteWarning && limiteWarning.limite && (
+        <div style={{
+          ...styles.warningBanner,
+          backgroundColor: limiteWarning.permitido ? '#fffbeb' : '#fef2f2',
+          borderColor: limiteWarning.permitido ? '#f59e0b' : '#ef4444',
+        }}>
+          <span style={{
+            color: limiteWarning.permitido ? '#92400e' : '#991b1b',
+            fontSize: '14px',
+          }}>
+            {limiteWarning.permitido
+              ? `⚠️ Estás usando ${limiteWarning.usado} de ${limiteWarning.limite} pacientes (${limiteWarning.porcentajeUsado}%). `
+              : `🚫 Límite alcanzado: ${limiteWarning.usado}/${limiteWarning.limite} pacientes. `
+            }
+            <button
+              onClick={() => navigate('/planes')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#1e40af',
+                fontWeight: '600',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: '14px',
+              }}
+            >
+              Ver planes
+            </button>
+          </span>
+        </div>
+      )}
 
       <div style={styles.form}>
         {/* Información Personal */}
@@ -316,6 +343,16 @@ export default function AddPacienteScreen() {
       <div style={styles.footer}>
         <div style={styles.footerText}>Diseñado por MCorp</div>
       </div>
+
+      {/* ✅ MODAL DE UPGRADE */}
+      <UpgradeModal
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        tipo="pacientes"
+        usado={limitInfo?.usado || 0}
+        limite={limitInfo?.limite || 0}
+        planActual={limitInfo?.plan || 'Gratuito'}
+      />
     </div>
   )
 }
@@ -365,6 +402,11 @@ const styles = {
   saveButtonDisabled: {
     backgroundColor: '#94a3b8',
     cursor: 'not-allowed',
+  },
+  warningBanner: {
+    padding: '12px 24px',
+    borderBottom: '2px solid',
+    textAlign: 'center',
   },
   form: {
     flex: 1,

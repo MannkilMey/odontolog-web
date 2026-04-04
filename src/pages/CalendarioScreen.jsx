@@ -5,6 +5,9 @@ import { enviarRecordatorioCita, enviarConfirmacionCita } from '../utils/emailSe
 import EmailPreviewModal from '../components/EmailPreviewModal'
 import { enviarWhatsAppTemplate, verificarLimiteWhatsApp, enviarWhatsAppSimple } from '../utils/twilioService'
 import { generarLinksConfirmacion } from '../utils/confirmacionLinks'
+import { useSuscripcion } from '../hooks/SuscripcionContext'
+import { useLimitesPlan } from '../hooks/useLimitesPlan'
+import UpgradeModal from '../components/UpgradeModal'
 
 
 export default function CalendarioScreen() {
@@ -12,53 +15,27 @@ export default function CalendarioScreen() {
   const [loading, setLoading] = useState(true)
   const [citas, setCitas] = useState([])
   const [pacientes, setPacientes] = useState([])
-  const [vistaActual, setVistaActual] = useState('dia') // 'dia', 'semana', 'mes'
+  const [vistaActual, setVistaActual] = useState('dia')
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date())
-  const [isPremium, setIsPremium] = useState(false)
   const [modalEmail, setModalEmail] = useState({
     isOpen: false,
     emailData: null
   })
 
+  // ✅ Usar contexto en vez de checkPlan manual
+  const { isPremium } = useSuscripcion()
+  const { verificar, limitInfo, showUpgrade, setShowUpgrade } = useLimitesPlan()
+  const [upgradeTipo, setUpgradeTipo] = useState('emails')
+
   useEffect(() => {
     loadData()
-    checkPlan()
   }, [fechaSeleccionada, vistaActual])
-
-  const checkPlan = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      const { data: suscripcion } = await supabase
-        .from('suscripciones_usuarios')
-        .select('plan_id')
-        .eq('dentista_id', user.id)
-        .single()
-
-      if (!suscripcion) {
-        setIsPremium(false)
-        return
-      }
-
-      const { data: plan } = await supabase
-        .from('planes_suscripcion')
-        .select('codigo')
-        .eq('id', suscripcion.plan_id)
-        .single()
-
-      setIsPremium(plan?.codigo !== 'free')
-    } catch (error) {
-      console.error('Error verificando plan:', error)
-      setIsPremium(false)
-    }
-  }
 
   const loadData = async () => {
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Cargar pacientes para el dropdown
       const { data: pacientesData } = await supabase
         .from('pacientes')
         .select('id, nombre, apellido')
@@ -67,10 +44,8 @@ export default function CalendarioScreen() {
 
       setPacientes(pacientesData || [])
 
-      // Calcular rango de fechas según la vista
       const { fechaInicio, fechaFin } = getRangoFechas()
 
-      // Cargar citas del rango
       const { data: citasData, error: citasError } = await supabase
         .from('citas')
         .select(`
@@ -107,20 +82,15 @@ export default function CalendarioScreen() {
       fechaInicio = formatDate(fecha)
       fechaFin = formatDate(fecha)
     } else if (vistaActual === 'semana') {
-      // Inicio de semana (domingo)
       const inicioSemana = new Date(fecha)
       inicioSemana.setDate(fecha.getDate() - fecha.getDay())
-      
-      // Fin de semana (sábado)
       const finSemana = new Date(inicioSemana)
       finSemana.setDate(inicioSemana.getDate() + 6)
-      
       fechaInicio = formatDate(inicioSemana)
       fechaFin = formatDate(finSemana)
-    } else { // mes
+    } else {
       const inicioMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1)
       const finMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0)
-      
       fechaInicio = formatDate(inicioMes)
       fechaFin = formatDate(finMes)
     }
@@ -142,20 +112,18 @@ export default function CalendarioScreen() {
   }
 
   const formatTime = (timeString) => {
-    return timeString.slice(0, 5) // "HH:MM:SS" -> "HH:MM"
+    return timeString.slice(0, 5)
   }
 
   const cambiarFecha = (direccion) => {
     const nuevaFecha = new Date(fechaSeleccionada)
-    
     if (vistaActual === 'dia') {
       nuevaFecha.setDate(nuevaFecha.getDate() + direccion)
     } else if (vistaActual === 'semana') {
       nuevaFecha.setDate(nuevaFecha.getDate() + (direccion * 7))
-    } else { // mes
+    } else {
       nuevaFecha.setMonth(nuevaFecha.getMonth() + direccion)
     }
-    
     setFechaSeleccionada(nuevaFecha)
   }
 
@@ -194,7 +162,14 @@ export default function CalendarioScreen() {
         return
       }
 
-      // Cargar config de la clínica
+      // ✅ VERIFICAR LÍMITE DE EMAILS
+      const limiteCheck = await verificar('emails')
+      if (!limiteCheck.permitido) {
+        setUpgradeTipo('emails')
+        setShowUpgrade(true)
+        return
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       const { data: config } = await supabase
         .from('configuracion_clinica')
@@ -290,107 +265,93 @@ export default function CalendarioScreen() {
     }
   }
 
-// 🆕 FUNCIÓN CORREGIDA CON TEMPLATE
-const enviarRecordatorioWhatsApp = async (cita) => {
-  try {
-    // ✅ VERIFICAR PLAN PREMIUM
-    if (!isPremium) {
-      const confirmar = window.confirm(
-        '⭐ Función Premium\n\n' +
-        'El envío de WhatsApp está disponible solo para usuarios Premium y Enterprise.\n\n' +
-        '¿Deseas ver los planes disponibles?'
-      )
-      if (confirmar) {
-        navigate('/planes')
+  const enviarRecordatorioWhatsApp = async (cita) => {
+    try {
+      // ✅ VERIFICAR LÍMITE DE WHATSAPP (reemplaza el window.confirm anterior)
+      const limiteCheck = await verificar('whatsapp')
+      if (!limiteCheck.permitido) {
+        setUpgradeTipo('whatsapp')
+        setShowUpgrade(true)
+        return
       }
-      return
-    }
 
-    if (!cita.pacientes || !cita.pacientes.telefono) {
-      alert('⚠️ Este paciente no tiene teléfono registrado')
-      return
-    }
+      if (!cita.pacientes || !cita.pacientes.telefono) {
+        alert('⚠️ Este paciente no tiene teléfono registrado')
+        return
+      }
 
+      // Verificar límites de Twilio
+      const limite = await verificarLimiteWhatsApp()
+      if (!limite.permitido) {
+        alert(`❌ ${limite.mensaje}`)
+        return
+      }
 
-    // Verificar límites
-    const limite = await verificarLimiteWhatsApp()
-    if (!limite.permitido) {
-      alert(`❌ ${limite.mensaje}`)
-      return
-    }
+      // Generar links de confirmación
+      const linksResult = await generarLinksConfirmacion(cita.id, 48)
+      
+      if (!linksResult.success) {
+        throw new Error('No se pudieron generar links de confirmación')
+      }
 
-    // 🆕 GENERAR LINKS DE CONFIRMACIÓN
-    const linksResult = await generarLinksConfirmacion(cita.id, 48) // Expira en 48 horas
-    
-    if (!linksResult.success) {
-      throw new Error('No se pudieron generar links de confirmación')
-    }
+      // Cargar config de la clínica
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: config } = await supabase
+        .from('configuracion_clinica')
+        .select('nombre_comercial, razon_social, nombre_remitente_whatsapp')
+        .eq('dentista_id', user.id)
+        .single()
 
+      const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
 
-    // Cargar config de la clínica
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: config } = await supabase
-      .from('configuracion_clinica')
-      .select('nombre_comercial, razon_social, nombre_remitente_whatsapp')
-      .eq('dentista_id', user.id)
-      .single()
-
-    const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
-
-    // Preparar fecha
-    const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-    const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
-
-    // 🆕 USAR TEMPLATE APROBADO CON LINKS
-    const variables = {
-      "1": cita.pacientes.nombre,
-      "2": fechaFormateada,
-      "3": formatTime(cita.hora_inicio),
-      "4": nombreClinica,
-      "5": linksResult.confirmarUrl,
-      "6": linksResult.cancelarUrl,
-      "7": config?.nombre_remitente_whatsapp || 'Equipo OdontoLog'
-    }
-
-    
-
-    const resultado = await enviarWhatsAppTemplate({
-      to: cita.pacientes.telefono,
-      tipo: 'recordatorio_cita_con_links',
-      variables: variables,
-      pacienteId: cita.paciente_id
-    })
-
-
-    alert(
-      `✅ Recordatorio con links enviado por WhatsApp\n\n` +
-      `Paciente: ${cita.pacientes.nombre}\n` +
-      `Mensajes usados: ${resultado.usado}/${resultado.limite}\n\n` +
-      `Template aprobado con links de confirmación ✅`
-    )
-
-    // Marcar como recordatorio enviado
-    await supabase
-      .from('citas')
-      .update({ 
-        recordatorio_enviado: true,
-        fecha_recordatorio_enviado: new Date().toISOString()
+      const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
+      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
       })
-      .eq('id', cita.id)
 
-    // Recargar datos
-    loadData()
+      const variables = {
+        "1": cita.pacientes.nombre,
+        "2": fechaFormateada,
+        "3": formatTime(cita.hora_inicio),
+        "4": nombreClinica,
+        "5": linksResult.confirmarUrl,
+        "6": linksResult.cancelarUrl,
+        "7": config?.nombre_remitente_whatsapp || 'Equipo OdontoLog'
+      }
 
-  } catch (error) {
-    console.error('❌ Error al enviar WhatsApp con links:', error)
-    alert('❌ Error al enviar WhatsApp: ' + error.message)
+      const resultado = await enviarWhatsAppTemplate({
+        to: cita.pacientes.telefono,
+        tipo: 'recordatorio_cita_con_links',
+        variables: variables,
+        pacienteId: cita.paciente_id
+      })
+
+      alert(
+        `✅ Recordatorio con links enviado por WhatsApp\n\n` +
+        `Paciente: ${cita.pacientes.nombre}\n` +
+        `Mensajes usados: ${resultado.usado}/${resultado.limite}\n\n` +
+        `Template aprobado con links de confirmación ✅`
+      )
+
+      await supabase
+        .from('citas')
+        .update({ 
+          recordatorio_enviado: true,
+          fecha_recordatorio_enviado: new Date().toISOString()
+        })
+        .eq('id', cita.id)
+
+      loadData()
+
+    } catch (error) {
+      console.error('❌ Error al enviar WhatsApp con links:', error)
+      alert('❌ Error al enviar WhatsApp: ' + error.message)
+    }
   }
-}
-  // Agrupar citas por fecha (para vista de semana/mes)
+
+  // Agrupar citas por fecha
   const citasPorFecha = citas.reduce((acc, cita) => {
     const fecha = cita.fecha_cita
     if (!acc[fecha]) acc[fecha] = []
@@ -428,48 +389,31 @@ const enviarRecordatorioWhatsApp = async (cita) => {
       <div style={styles.content}>
         {/* Controles del Calendario */}
         <div style={styles.controls}>
-          {/* Selector de Vista */}
           <div style={styles.viewSelector}>
             <button
-              style={{
-                ...styles.viewButton,
-                ...(vistaActual === 'dia' && styles.viewButtonActive)
-              }}
+              style={{...styles.viewButton, ...(vistaActual === 'dia' && styles.viewButtonActive)}}
               onClick={() => setVistaActual('dia')}
             >
               Día
             </button>
             <button
-              style={{
-                ...styles.viewButton,
-                ...(vistaActual === 'semana' && styles.viewButtonActive)
-              }}
+              style={{...styles.viewButton, ...(vistaActual === 'semana' && styles.viewButtonActive)}}
               onClick={() => setVistaActual('semana')}
             >
               Semana
             </button>
             <button
-              style={{
-                ...styles.viewButton,
-                ...(vistaActual === 'mes' && styles.viewButtonActive)
-              }}
+              style={{...styles.viewButton, ...(vistaActual === 'mes' && styles.viewButtonActive)}}
               onClick={() => setVistaActual('mes')}
             >
               Mes
             </button>
           </div>
 
-          {/* Navegación de Fechas */}
           <div style={styles.dateNavigation}>
-            <button style={styles.navButton} onClick={() => cambiarFecha(-1)}>
-              ←
-            </button>
-            <button style={styles.todayButton} onClick={irHoy}>
-              Hoy
-            </button>
-            <button style={styles.navButton} onClick={() => cambiarFecha(1)}>
-              →
-            </button>
+            <button style={styles.navButton} onClick={() => cambiarFecha(-1)}>←</button>
+            <button style={styles.todayButton} onClick={irHoy}>Hoy</button>
+            <button style={styles.navButton} onClick={() => cambiarFecha(1)}>→</button>
           </div>
         </div>
 
@@ -480,7 +424,7 @@ const enviarRecordatorioWhatsApp = async (cita) => {
           {vistaActual === 'mes' && new Date(fechaSeleccionada).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
         </div>
 
-        {/* Vista del Calendario */}
+        {/* Vistas */}
         {vistaActual === 'dia' && (
           <VistaDia 
             citas={citas} 
@@ -521,6 +465,16 @@ const enviarRecordatorioWhatsApp = async (cita) => {
         onClose={() => setModalEmail({ isOpen: false, emailData: null })}
         onConfirm={modalEmail.emailData?.onConfirm}
         emailData={modalEmail.emailData || {}}
+      />
+
+      {/* ✅ MODAL DE UPGRADE */}
+      <UpgradeModal
+        isOpen={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        tipo={upgradeTipo}
+        usado={limitInfo?.usado || 0}
+        limite={limitInfo?.limite || 0}
+        planActual={limitInfo?.plan || 'Gratuito'}
       />
 
       {/* Footer */}
@@ -632,19 +586,13 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
 }
 
 // Componente Vista Semana
-// Componente Vista Semana - CORREGIDO
-// Componente Vista Semana - CORREGIDO PARA ZONA HORARIA
 function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, getEstadoColor }) {
-  // 🆕 CREAR FECHA LIMPIA SIN HORA
   const fechaLimpia = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), fechaSeleccionada.getDate())
-  
-  // 🆕 CALCULAR INICIO DE SEMANA CON FECHA LIMPIA
   const inicioSemana = new Date(fechaLimpia)
   inicioSemana.setDate(fechaLimpia.getDate() - fechaLimpia.getDay())
   
   const diasSemana = []
   for (let i = 0; i < 7; i++) {
-    // 🆕 USAR CONSTRUCTOR DE FECHA LIMPIA
     const dia = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + i)
     diasSemana.push(dia)
   }
@@ -706,20 +654,17 @@ function VistaMes({ citasPorFecha, fechaSeleccionada, navigate, getEstadoColor }
   const diasMes = []
   const primerDiaSemana = primerDia.getDay()
   
-  // Días del mes anterior para completar la primera semana
   for (let i = primerDiaSemana - 1; i >= 0; i--) {
     const dia = new Date(primerDia)
     dia.setDate(dia.getDate() - i - 1)
     diasMes.push({ fecha: dia, esMesActual: false })
   }
   
-  // Días del mes actual
   for (let i = 1; i <= ultimoDia.getDate(); i++) {
     const dia = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), i)
     diasMes.push({ fecha: dia, esMesActual: true })
   }
   
-  // Días del mes siguiente para completar la última semana
   const diasRestantes = 7 - (diasMes.length % 7)
   if (diasRestantes < 7) {
     for (let i = 1; i <= diasRestantes; i++) {
@@ -731,13 +676,11 @@ function VistaMes({ citasPorFecha, fechaSeleccionada, navigate, getEstadoColor }
 
   return (
     <div style={styles.mesContainer}>
-      {/* Encabezados de días */}
       <div style={styles.mesGrid}>
         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia, idx) => (
           <div key={idx} style={styles.mesDiaHeader}>{dia}</div>
         ))}
         
-        {/* Días del mes */}
         {diasMes.map((dia, index) => {
           const fechaStr = dia.fecha.toISOString().split('T')[0]
           const citasDelDia = citasPorFecha[fechaStr] || []
@@ -782,349 +725,58 @@ function VistaMes({ citasPorFecha, fechaSeleccionada, navigate, getEstadoColor }
 }
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  loadingContainer: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px 24px',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  backButton: {
-    padding: '8px 16px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#6b7280',
-    fontSize: '16px',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  headerInfo: {
-    flex: 1,
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1e40af',
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#6b7280',
-    marginTop: '4px',
-  },
-  addButton: {
-    padding: '10px 20px',
-    backgroundColor: '#10b981',
-    border: 'none',
-    borderRadius: '8px',
-    color: '#ffffff',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  content: {
-    flex: 1,
-    padding: '24px',
-    overflowY: 'auto',
-    maxWidth: '1400px',
-    width: '100%',
-    margin: '0 auto',
-  },
-  controls: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '24px',
-    gap: '16px',
-    flexWrap: 'wrap',
-  },
-  viewSelector: {
-    display: 'flex',
-    gap: '8px',
-    backgroundColor: '#ffffff',
-    padding: '4px',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-  },
-  viewButton: {
-    padding: '8px 16px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#6b7280',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  viewButtonActive: {
-    backgroundColor: '#1e40af',
-    color: '#ffffff',
-  },
-  dateNavigation: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'center',
-  },
-  navButton: {
-    padding: '8px 16px',
-    backgroundColor: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    fontSize: '18px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  todayButton: {
-    padding: '8px 16px',
-    backgroundColor: '#3b82f6',
-    border: 'none',
-    borderRadius: '8px',
-    color: '#ffffff',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  dateTitle: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: '24px',
-    textAlign: 'center',
-    textTransform: 'capitalize',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '60px 20px',
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    border: '2px dashed #e5e7eb',
-  },
-  emptyIcon: {
-    fontSize: '64px',
-    marginBottom: '16px',
-  },
-  emptyText: {
-    fontSize: '16px',
-    color: '#6b7280',
-    marginBottom: '24px',
-  },
-  emptyButton: {
-    padding: '12px 24px',
-    backgroundColor: '#1e40af',
-    border: 'none',
-    borderRadius: '8px',
-    color: '#ffffff',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  citasList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  citaCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '2px solid #e5e7eb',
-    borderLeft: '4px solid',
-    transition: 'all 0.2s',
-  },
-  citaHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '12px',
-  },
-  citaTime: {
-    fontSize: '16px',
-    fontWeight: '700',
-    color: '#1f2937',
-  },
-  citaEstado: {
-    padding: '4px 12px',
-    borderRadius: '12px',
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#ffffff',
-    textTransform: 'capitalize',
-  },
-  citaPaciente: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#1e40af',
-    marginBottom: '8px',
-    cursor: 'pointer',
-  },
-  citaMotivo: {
-    fontSize: '14px',
-    color: '#6b7280',
-    marginBottom: '4px',
-  },
-  citaNotas: {
-    fontSize: '13px',
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    marginTop: '8px',
-    paddingTop: '8px',
-    borderTop: '1px solid #f3f4f6',
-  },
-  citaActions: {
-    display: 'flex',
-    gap: '8px',
-    marginTop: '12px',
-    paddingTop: '12px',
-    borderTop: '1px solid #f3f4f6',
-  },
-  citaActionButton: {
-    flex: 1,
-    padding: '8px 12px',
-    border: 'none',
-    borderRadius: '6px',
-    color: '#ffffff',
-    fontSize: '12px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  },
-  semanaGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: '12px',
-  },
-  diaCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    border: '1px solid #e5e7eb',
-  },
-  diaHeader: {
-    backgroundColor: '#f9fafb',
-    padding: '12px',
-    textAlign: 'center',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  diaHeaderHoy: {
-    backgroundColor: '#1e40af',
-    color: '#ffffff',
-  },
-  diaNombre: {
-    fontSize: '12px',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: '4px',
-  },
-  diaNumero: {
-    fontSize: '20px',
-    fontWeight: '700',
-  },
-  citasMini: {
-    padding: '8px',
-  },
-  noCitas: {
-    fontSize: '12px',
-    color: '#9ca3af',
-    textAlign: 'center',
-    padding: '20px 8px',
-  },
-  citaMini: {
-    backgroundColor: '#f9fafb',
-    padding: '8px',
-    marginBottom: '4px',
-    borderRadius: '6px',
-    borderLeft: '3px solid',
-    cursor: 'pointer',
-  },
-  citaMiniTime: {
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  citaMiniPaciente: {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  mesContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '16px',
-    border: '1px solid #e5e7eb',
-  },
-  mesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: '8px',
-  },
-  mesDiaHeader: {
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#6b7280',
-    textAlign: 'center',
-    padding: '8px',
-    textTransform: 'uppercase',
-  },
-  mesDiaCard: {
-    minHeight: '80px',
-    padding: '8px',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    position: 'relative',
-  },
-  mesDiaInactivo: {
-    backgroundColor: '#f9fafb',
-    opacity: 0.5,
-  },
-  mesDiaHoy: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#1e40af',
-    borderWidth: '2px',
-  },
-  mesDiaNumero: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: '4px',
-  },
-  mesCitasIndicador: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '4px',
-    marginTop: '4px',
-  },
-  mesCitaDot: {
-    width: '8px',
-    height: '8px',
-    borderRadius: '50%',
-  },
-  mesCitasExtra: {
-    fontSize: '10px',
-    color: '#6b7280',
-  },
-  footer: {
-    textAlign: 'center',
-    padding: '16px',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
-  },
-  footerText: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
+  container: { minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' },
+  loadingContainer: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  header: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb' },
+  backButton: { padding: '8px 16px', backgroundColor: 'transparent', border: 'none', color: '#6b7280', fontSize: '16px', fontWeight: '500', cursor: 'pointer' },
+  headerInfo: { flex: 1, textAlign: 'center' },
+  title: { fontSize: '24px', fontWeight: '700', color: '#1e40af' },
+  subtitle: { fontSize: '14px', color: '#6b7280', marginTop: '4px' },
+  addButton: { padding: '10px 20px', backgroundColor: '#10b981', border: 'none', borderRadius: '8px', color: '#ffffff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+  content: { flex: 1, padding: '24px', overflowY: 'auto', maxWidth: '1400px', width: '100%', margin: '0 auto' },
+  controls: { display: 'flex', justifyContent: 'space-between', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' },
+  viewSelector: { display: 'flex', gap: '8px', backgroundColor: '#ffffff', padding: '4px', borderRadius: '8px', border: '1px solid #e5e7eb' },
+  viewButton: { padding: '8px 16px', backgroundColor: 'transparent', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', color: '#6b7280', cursor: 'pointer', transition: 'all 0.2s' },
+  viewButtonActive: { backgroundColor: '#1e40af', color: '#ffffff' },
+  dateNavigation: { display: 'flex', gap: '12px', alignItems: 'center' },
+  navButton: { padding: '8px 16px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '18px', fontWeight: '600', cursor: 'pointer' },
+  todayButton: { padding: '8px 16px', backgroundColor: '#3b82f6', border: 'none', borderRadius: '8px', color: '#ffffff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+  dateTitle: { fontSize: '20px', fontWeight: '700', color: '#1f2937', marginBottom: '24px', textAlign: 'center', textTransform: 'capitalize' },
+  emptyState: { textAlign: 'center', padding: '60px 20px', backgroundColor: '#ffffff', borderRadius: '12px', border: '2px dashed #e5e7eb' },
+  emptyIcon: { fontSize: '64px', marginBottom: '16px' },
+  emptyText: { fontSize: '16px', color: '#6b7280', marginBottom: '24px' },
+  emptyButton: { padding: '12px 24px', backgroundColor: '#1e40af', border: 'none', borderRadius: '8px', color: '#ffffff', fontSize: '16px', fontWeight: '600', cursor: 'pointer' },
+  citasList: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  citaCard: { backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px', border: '2px solid #e5e7eb', borderLeft: '4px solid', transition: 'all 0.2s' },
+  citaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+  citaTime: { fontSize: '16px', fontWeight: '700', color: '#1f2937' },
+  citaEstado: { padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', color: '#ffffff', textTransform: 'capitalize' },
+  citaPaciente: { fontSize: '18px', fontWeight: '600', color: '#1e40af', marginBottom: '8px', cursor: 'pointer' },
+  citaMotivo: { fontSize: '14px', color: '#6b7280', marginBottom: '4px' },
+  citaNotas: { fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' },
+  citaActions: { display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' },
+  citaActionButton: { flex: 1, padding: '8px 12px', border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' },
+  semanaGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px' },
+  diaCard: { backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb' },
+  diaHeader: { backgroundColor: '#f9fafb', padding: '12px', textAlign: 'center', borderBottom: '1px solid #e5e7eb' },
+  diaHeaderHoy: { backgroundColor: '#1e40af', color: '#ffffff' },
+  diaNombre: { fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', marginBottom: '4px' },
+  diaNumero: { fontSize: '20px', fontWeight: '700' },
+  citasMini: { padding: '8px' },
+  noCitas: { fontSize: '12px', color: '#9ca3af', textAlign: 'center', padding: '20px 8px' },
+  citaMini: { backgroundColor: '#f9fafb', padding: '8px', marginBottom: '4px', borderRadius: '6px', borderLeft: '3px solid', cursor: 'pointer' },
+  citaMiniTime: { fontSize: '11px', fontWeight: '600', color: '#6b7280' },
+  citaMiniPaciente: { fontSize: '12px', fontWeight: '600', color: '#1f2937' },
+  mesContainer: { backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px', border: '1px solid #e5e7eb' },
+  mesGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' },
+  mesDiaHeader: { fontSize: '12px', fontWeight: '600', color: '#6b7280', textAlign: 'center', padding: '8px', textTransform: 'uppercase' },
+  mesDiaCard: { minHeight: '80px', padding: '8px', borderRadius: '8px', border: '1px solid #e5e7eb', position: 'relative' },
+  mesDiaInactivo: { backgroundColor: '#f9fafb', opacity: 0.5 },
+  mesDiaHoy: { backgroundColor: '#eff6ff', borderColor: '#1e40af', borderWidth: '2px' },
+  mesDiaNumero: { fontSize: '14px', fontWeight: '600', color: '#1f2937', marginBottom: '4px' },
+  mesCitasIndicador: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' },
+  mesCitaDot: { width: '8px', height: '8px', borderRadius: '50%' },
+  mesCitasExtra: { fontSize: '10px', color: '#6b7280' },
+  footer: { textAlign: 'center', padding: '16px', backgroundColor: '#ffffff', borderTop: '1px solid #e5e7eb' },
+  footerText: { fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' },
 }
