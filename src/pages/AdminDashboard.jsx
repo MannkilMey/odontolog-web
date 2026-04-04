@@ -398,7 +398,7 @@ export default function AdminDashboard() {
         .not('email', 'like', '%sin-email.temp%').neq('email', '')
 
       const { data: porPaisData } = await supabase
-        .from('prospects').select('pais')
+        .from('prospects').select('pais').limit(5000)
       const porPais = {}
       porPaisData?.forEach(p => { porPais[p.pais] = (porPais[p.pais] || 0) + 1 })
 
