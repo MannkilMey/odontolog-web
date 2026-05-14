@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 
 export default function ResetPasswordScreen() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -12,28 +14,24 @@ export default function ResetPasswordScreen() {
     e.preventDefault()
 
     if (password !== confirmPassword) {
-      alert('❌ Las contraseñas no coinciden')
+      alert(t('resetPassword.passwordMismatch'))
       return
     }
 
     if (password.length < 6) {
-      alert('❌ La contraseña debe tener al menos 6 caracteres')
+      alert(t('resetPassword.passwordTooShort'))
       return
     }
 
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      })
-      
+      const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
-      
-      alert('✅ Contraseña actualizada correctamente')
+      alert(t('resetPassword.successAlert'))
       navigate('/dashboard')
     } catch (error) {
-      alert('Error: ' + error.message)
+      alert(t('resetPassword.errorAlert', { message: error.message }))
     } finally {
       setLoading(false)
     }
@@ -44,20 +42,18 @@ export default function ResetPasswordScreen() {
       <div style={styles.card}>
         <div style={styles.header}>
           <div style={styles.icon}>🔐</div>
-          <h1 style={styles.title}>Nueva Contraseña</h1>
-          <p style={styles.subtitle}>
-            Ingresa tu nueva contraseña de forma segura
-          </p>
+          <h1 style={styles.title}>{t('resetPassword.title')}</h1>
+          <p style={styles.subtitle}>{t('resetPassword.subtitle')}</p>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Nueva Contraseña</label>
+            <label style={styles.label}>{t('resetPassword.newPassword')}</label>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              onChange={e => setPassword(e.target.value)}
+              placeholder={t('resetPassword.newPasswordPlaceholder')}
               required
               minLength={6}
               style={styles.input}
@@ -65,12 +61,12 @@ export default function ResetPasswordScreen() {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Confirmar Contraseña</label>
+            <label style={styles.label}>{t('auth.confirmPassword')}</label>
             <input
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repite tu contraseña"
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder={t('resetPassword.confirmPlaceholder')}
               required
               minLength={6}
               style={styles.input}
@@ -82,12 +78,14 @@ export default function ResetPasswordScreen() {
               ...styles.matchIndicator,
               color: password === confirmPassword ? '#10b981' : '#ef4444'
             }}>
-              {password === confirmPassword ? '✓ Las contraseñas coinciden' : '✗ Las contraseñas no coinciden'}
+              {password === confirmPassword
+                ? t('resetPassword.passwordsMatch')
+                : t('resetPassword.passwordsMismatch')}
             </div>
           )}
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading || password !== confirmPassword}
             style={{
               ...styles.submitButton,
@@ -95,14 +93,12 @@ export default function ResetPasswordScreen() {
               cursor: (loading || password !== confirmPassword) ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Actualizando...' : '🔑 Actualizar Contraseña'}
+            {loading ? t('resetPassword.updating') : t('resetPassword.submitButton')}
           </button>
         </form>
 
         <div style={styles.securityNote}>
-          <p style={styles.securityText}>
-            🔒 Tu contraseña será encriptada de forma segura
-          </p>
+          <p style={styles.securityText}>{t('resetPassword.securityNote')}</p>
         </div>
       </div>
     </div>
@@ -110,89 +106,18 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px',
-  },
-  card: {
-    maxWidth: '450px',
-    width: '100%',
-    backgroundColor: '#ffffff',
-    borderRadius: '16px',
-    padding: '40px',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '30px',
-  },
-  icon: {
-    fontSize: '64px',
-    marginBottom: '16px',
-  },
-  title: {
-    color: '#1f2937',
-    fontSize: '24px',
-    fontWeight: '700',
-    marginBottom: '12px',
-  },
-  subtitle: {
-    color: '#6b7280',
-    fontSize: '15px',
-    lineHeight: '1.5',
-  },
-  form: {
-    marginBottom: '24px',
-  },
-  inputGroup: {
-    marginBottom: '20px',
-  },
-  label: {
-    display: 'block',
-    marginBottom: '8px',
-    color: '#374151',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    border: '2px solid #e5e7eb',
-    borderRadius: '8px',
-    fontSize: '14px',
-    transition: 'border-color 0.3s',
-    boxSizing: 'border-box',
-  },
-  matchIndicator: {
-    fontSize: '13px',
-    fontWeight: '600',
-    marginBottom: '20px',
-    textAlign: 'center',
-  },
-  submitButton: {
-    width: '100%',
-    padding: '14px',
-    background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: '700',
-    transition: 'all 0.3s',
-  },
-  securityNote: {
-    textAlign: 'center',
-    padding: '16px',
-    backgroundColor: '#f0f9ff',
-    borderRadius: '8px',
-  },
-  securityText: {
-    color: '#1e40af',
-    fontSize: '13px',
-    margin: 0,
-  },
+  container: { minHeight: '100vh', background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
+  card: { maxWidth: '450px', width: '100%', backgroundColor: '#ffffff', borderRadius: '16px', padding: '40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' },
+  header: { textAlign: 'center', marginBottom: '30px' },
+  icon: { fontSize: '64px', marginBottom: '16px' },
+  title: { color: '#1f2937', fontSize: '24px', fontWeight: '700', marginBottom: '12px' },
+  subtitle: { color: '#6b7280', fontSize: '15px', lineHeight: '1.5' },
+  form: { marginBottom: '24px' },
+  inputGroup: { marginBottom: '20px' },
+  label: { display: 'block', marginBottom: '8px', color: '#374151', fontSize: '14px', fontWeight: '600' },
+  input: { width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', transition: 'border-color 0.3s', boxSizing: 'border-box' },
+  matchIndicator: { fontSize: '13px', fontWeight: '600', marginBottom: '20px', textAlign: 'center' },
+  submitButton: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '700', transition: 'all 0.3s' },
+  securityNote: { textAlign: 'center', padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '8px' },
+  securityText: { color: '#1e40af', fontSize: '13px', margin: 0 },
 }

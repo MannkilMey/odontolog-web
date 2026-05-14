@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useMoneda } from '../hooks/useMoneda'
+import { useTranslation } from 'react-i18next'
+
 
 export default function MetricasPerfilScreen() {
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
   const navigate = useNavigate()
   const { perfilId } = useParams()
   
@@ -92,7 +97,7 @@ export default function MetricasPerfilScreen() {
       // Contar procedimientos
       const procsMap = {}
       procsData?.forEach(proc => {
-        const nombre = proc.nombre_procedimiento || 'Sin especificar'
+        const nombre = proc.nombre_procedimiento || t('metricasPerfil.unspecified')
         if (!procsMap[nombre]) {
           procsMap[nombre] = 0
         }
@@ -108,7 +113,7 @@ export default function MetricasPerfilScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar métricas')
+      alert(t('errors.loadError', { item: t('dashboard.metrics') }))
     } finally {
       setLoading(false)
     }
@@ -117,7 +122,7 @@ export default function MetricasPerfilScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando métricas...</div>
+        <div>{t('metricasPerfil.loading')}</div>
       </div>
     )
   }
@@ -129,7 +134,7 @@ export default function MetricasPerfilScreen() {
           <button onClick={() => navigate(-1)} style={styles.backButton}>
             ← Volver
           </button>
-          <div style={styles.title}>❌ Perfil no encontrado</div>
+          <div style={styles.title}>{t('metricasPerfil.notFound')}</div>
         </div>
       </div>
     )
@@ -143,11 +148,11 @@ export default function MetricasPerfilScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate(-1)} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
           <div style={styles.title}>
-            📊 Métricas de {metricas.nombre} {metricas.apellido}
+            {t('metricasPerfil.title', { nombre: `${metricas.nombre} ${metricas.apellido}` })}
           </div>
           <div style={styles.subtitle}>{metricas.clinica || metricas.email}</div>
         </div>
@@ -164,7 +169,7 @@ export default function MetricasPerfilScreen() {
             }}
             onClick={() => setPeriodo('mes_actual')}
           >
-            Este Mes
+            {t('metricasPerfil.thisMes')}
           </button>
           <button
             style={{
@@ -173,7 +178,7 @@ export default function MetricasPerfilScreen() {
             }}
             onClick={() => setPeriodo('mes_anterior')}
           >
-            Mes Anterior
+            {t('metricasPerfil.lastMes')}
           </button>
           <button
             style={{
@@ -182,7 +187,7 @@ export default function MetricasPerfilScreen() {
             }}
             onClick={() => setPeriodo('ultimos_30')}
           >
-            Últimos 30 Días
+            {t('metricasPerfil.last30')}
           </button>
         </div>
 
@@ -191,23 +196,23 @@ export default function MetricasPerfilScreen() {
           <div style={styles.metricCard}>
             <div style={styles.metricIcon}>👥</div>
             <div style={styles.metricValue}>{metricas.total_pacientes || 0}</div>
-            <div style={styles.metricLabel}>Pacientes Totales</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.totalPatients')}</div>
           </div>
 
           <div style={styles.metricCard}>
             <div style={styles.metricIcon}>💰</div>
             <div style={styles.metricValue}>
-              Gs. {(metricas.ingresos_mes_actual || 0).toLocaleString('es-PY')}
+              {formatMoney(metricas.ingresos_mes_actual || 0)}
             </div>
-            <div style={styles.metricLabel}>Ingresos Este Mes</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.incomeThisMonth')}</div>
           </div>
 
           <div style={styles.metricCard}>
             <div style={styles.metricIcon}>📉</div>
             <div style={styles.metricValue}>
-              Gs. {(metricas.gastos_mes_actual || 0).toLocaleString('es-PY')}
+              {formatMoney(metricas.gastos_mes_actual || 0)}
             </div>
-            <div style={styles.metricLabel}>Gastos Este Mes</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.expensesThisMonth')}</div>
           </div>
 
           <div style={{
@@ -222,9 +227,9 @@ export default function MetricasPerfilScreen() {
               ...styles.metricValue,
               color: balanceMes >= 0 ? '#059669' : '#dc2626'
             }}>
-              Gs. {balanceMes.toLocaleString('es-PY')}
+              {formatMoney(balanceMes)}
             </div>
-            <div style={styles.metricLabel}>Balance Este Mes</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.balanceThisMonth')}</div>
           </div>
         </div>
 
@@ -233,13 +238,13 @@ export default function MetricasPerfilScreen() {
           <div style={styles.metricCard}>
             <div style={styles.metricIcon}>📅</div>
             <div style={styles.metricValue}>{metricas.citas_mes_actual || 0}</div>
-            <div style={styles.metricLabel}>Citas Este Mes</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.appointmentsThisMonth')}</div>
           </div>
 
           <div style={styles.metricCard}>
             <div style={styles.metricIcon}>🦷</div>
             <div style={styles.metricValue}>{metricas.procedimientos_mes_actual || 0}</div>
-            <div style={styles.metricLabel}>Procedimientos</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.procedures')}</div>
           </div>
 
           <div style={styles.metricCard}>
@@ -247,7 +252,7 @@ export default function MetricasPerfilScreen() {
             <div style={styles.metricValue}>
               Gs. {(metricas.ingresos_totales || 0).toLocaleString('es-PY')}
             </div>
-            <div style={styles.metricLabel}>Ingresos Históricos</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.historicalIncome')}</div>
           </div>
 
           <div style={{
@@ -262,15 +267,15 @@ export default function MetricasPerfilScreen() {
             }}>
               Gs. {balanceTotal.toLocaleString('es-PY')}
             </div>
-            <div style={styles.metricLabel}>Balance Total</div>
+            <div style={styles.metricLabel}>{t('metricasPerfil.totalBalance')}</div>
           </div>
         </div>
 
         {/* Top Pacientes */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>🏆 Top 5 Pacientes por Ingresos</div>
+          <div style={styles.sectionTitle}>{t('metricasPerfil.topPatients')}</div>
           {pacientesTop.length === 0 ? (
-            <div style={styles.emptyState}>No hay datos en este período</div>
+            <div style={styles.emptyState}>{t('metricasPerfil.noPeriodData')}</div>
           ) : (
             <div style={styles.topList}>
               {pacientesTop.map((pac, idx) => (
@@ -278,7 +283,7 @@ export default function MetricasPerfilScreen() {
                   <div style={styles.topRank}>#{idx + 1}</div>
                   <div style={styles.topNombre}>{pac.nombre}</div>
                   <div style={styles.topValue}>
-                    Gs. {pac.total.toLocaleString('es-PY')}
+                    {formatMoney(pac.total)}
                   </div>
                 </div>
               ))}
@@ -288,16 +293,16 @@ export default function MetricasPerfilScreen() {
 
         {/* Top Procedimientos */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>🦷 Top 5 Procedimientos Más Realizados</div>
+          <div style={styles.sectionTitle}>{t('metricasPerfil.topProcedures')}</div>
           {procedimientosTop.length === 0 ? (
-            <div style={styles.emptyState}>No hay datos en este período</div>
+            <div style={styles.emptyState}>{t('metricasPerfil.noPeriodData')}</div>
           ) : (
             <div style={styles.topList}>
               {procedimientosTop.map((proc, idx) => (
                 <div key={idx} style={styles.topItem}>
                   <div style={styles.topRank}>#{idx + 1}</div>
                   <div style={styles.topNombre}>{proc.nombre}</div>
-                  <div style={styles.topValue}>{proc.count} veces</div>
+                  <div style={styles.topValue}>{t('metricasPerfil.times', { count: proc.count })}</div>
                 </div>
               ))}
             </div>
@@ -306,28 +311,28 @@ export default function MetricasPerfilScreen() {
 
         {/* Gráfico de Rendimiento */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>📈 Rendimiento</div>
+          <div style={styles.sectionTitle}>{t('metricasPerfil.performance')}</div>
           <div style={styles.performanceGrid}>
             <div style={styles.performanceCard}>
-              <div style={styles.performanceLabel}>Promedio por Paciente</div>
+              <div style={styles.performanceLabel}>{t('metricasPerfil.avgPerPatient')}</div>
               <div style={styles.performanceValue}>
-                Gs. {metricas.total_pacientes > 0 
-                  ? Math.round((metricas.ingresos_totales || 0) / metricas.total_pacientes).toLocaleString('es-PY')
-                  : '0'}
+                {metricas.total_pacientes > 0 
+                ? formatMoney(Math.round((metricas.ingresos_totales || 0) / metricas.total_pacientes))
+                : formatMoney(0)}
               </div>
             </div>
 
             <div style={styles.performanceCard}>
-              <div style={styles.performanceLabel}>Promedio por Procedimiento</div>
+              <div style={styles.performanceLabel}>{t('metricasPerfil.avgPerProcedure')}</div>
               <div style={styles.performanceValue}>
-                Gs. {metricas.procedimientos_mes_actual > 0
-                  ? Math.round((metricas.ingresos_mes_actual || 0) / metricas.procedimientos_mes_actual).toLocaleString('es-PY')
-                  : '0'}
+               {metricas.procedimientos_mes_actual > 0
+                ? formatMoney(Math.round((metricas.ingresos_mes_actual || 0) / metricas.procedimientos_mes_actual))
+                : formatMoney(0)}
               </div>
             </div>
 
             <div style={styles.performanceCard}>
-              <div style={styles.performanceLabel}>Tasa de Conversión</div>
+              <div style={styles.performanceLabel}>{t('metricasPerfil.conversionRate')}</div>
               <div style={styles.performanceValue}>
                 {metricas.citas_mes_actual > 0
                   ? Math.round((metricas.procedimientos_mes_actual / metricas.citas_mes_actual) * 100)
@@ -340,7 +345,7 @@ export default function MetricasPerfilScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

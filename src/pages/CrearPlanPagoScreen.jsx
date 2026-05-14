@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
+
 
 export default function CrearPlanPagoScreen() {
   const { pacienteId } = useParams()
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
+
   
   const [paciente, setPaciente] = useState(null)
   const [config, setConfig] = useState(null)
@@ -67,7 +73,7 @@ export default function CrearPlanPagoScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar datos')
+      alert(t('errors.loadError', { item: t('common.noData') }))
       navigate(-1)
     } finally {
       setLoading(false)
@@ -148,17 +154,17 @@ export default function CrearPlanPagoScreen() {
 
   const validateForm = () => {
     if (!formData.descripcion.trim()) {
-      alert('La descripción es requerida')
+      alert(t('errors.requiredField', { field: t('common.description') }))
       return false
     }
 
     if (!formData.monto_total || parseFloat(formData.monto_total) <= 0) {
-      alert('El monto total debe ser mayor a 0')
+      alert(t('planPago.amountError'))
       return false
     }
 
     if (formData.cantidad_cuotas < 2) {
-      alert('Debe haber al menos 2 cuotas')
+      alert(t('planPago.minInstallments'))
       return false
     }
 
@@ -216,12 +222,12 @@ export default function CrearPlanPagoScreen() {
 
       if (cuotasError) throw cuotasError
 
-      alert(`✅ Plan de pago ${numeroPlan} creado exitosamente\n\n${cantidadCuotas} cuotas de ${config.simbolo_moneda} ${montoCuota.toLocaleString()}`)
+      alert(`✅ ${t('planPago.saved', { number: numeroPlan })}\n\n${cantidadCuotas} ${t('planPago.installmentsOf')} ${formatMoney(montoCuota)}`)
       navigate(`/paciente/${pacienteId}`)
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al crear plan de pago: ' + error.message)
+      alert(t('errors.saveError', { item: t('planPago.title') }) + ': ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -230,7 +236,7 @@ export default function CrearPlanPagoScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -240,10 +246,10 @@ export default function CrearPlanPagoScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate(`/paciente/${pacienteId}`)} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📅 Crear Plan de Pago</div>
+          <div style={styles.title}>📅 {t('planPago.createTitle')}</div>
           <div style={styles.subtitle}>
             {paciente?.nombre} {paciente?.apellido}
           </div>
@@ -255,17 +261,17 @@ export default function CrearPlanPagoScreen() {
         <div style={styles.form}>
           {/* Información del Plan */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>Información del Plan</div>
+            <div style={styles.sectionTitle}>{t('planPago.planInfo')}</div>
 
             {presupuestos.length > 0 && (
               <>
-                <label style={styles.label}>Asociar a Presupuesto (opcional)</label>
+                <label style={styles.label}>{t('planPago.linkBudget')} ({t('common.optional')})</label>
                 <select
                   style={styles.select}
                   value={formData.presupuesto_id || ''}
                   onChange={(e) => updateFormField('presupuesto_id', e.target.value || null)}
                 >
-                  <option value="">Sin asociar a presupuesto</option>
+                  <option value="">{t('planPago.noBudget')}</option>
                   {presupuestos.map(pres => (
                     <option key={pres.id} value={pres.id}>
                       {pres.numero_presupuesto} - {config.simbolo_moneda} {Number(pres.total).toLocaleString()}
@@ -275,16 +281,16 @@ export default function CrearPlanPagoScreen() {
               </>
             )}
 
-            <label style={styles.label}>Descripción del Plan *</label>
+            <label style={styles.label}>{t('planPago.planDescription')} *</label>
             <input
               type="text"
               style={styles.input}
-              placeholder="Ej: Plan de pago ortodoncia - Mantenimiento mensual"
+              placeholder={t('planPago.descPlaceholder')}
               value={formData.descripcion}
               onChange={(e) => updateFormField('descripcion', e.target.value)}
             />
 
-            <label style={styles.label}>Monto Total *</label>
+            <label style={styles.label}>{t('planPago.totalAmount')} *</label>
             <div style={styles.montoInput}>
               <span style={styles.montoSymbol}>{config?.simbolo_moneda || 'Gs.'}</span>
               <input
@@ -301,11 +307,11 @@ export default function CrearPlanPagoScreen() {
 
           {/* Configuración de Cuotas */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>Configuración de Cuotas</div>
+            <div style={styles.sectionTitle}>{t('planPago.installmentConfig')}</div>
 
             <div style={styles.row}>
               <div style={styles.field}>
-                <label style={styles.label}>Cantidad de Cuotas *</label>
+                <label style={styles.label}>{t('planPago.installmentCount')} *</label>
                 <input
                   type="number"
                   style={styles.input}
@@ -317,20 +323,20 @@ export default function CrearPlanPagoScreen() {
               </div>
 
               <div style={styles.field}>
-                <label style={styles.label}>Frecuencia *</label>
+                <label style={styles.label}>{t('planPago.frequency')}*</label>
                 <select
                   style={styles.select}
                   value={formData.frecuencia}
                   onChange={(e) => updateFormField('frecuencia', e.target.value)}
                 >
-                  <option value="semanal">📅 Semanal</option>
-                  <option value="quincenal">📅 Quincenal</option>
-                  <option value="mensual">📅 Mensual</option>
+                   <option value="semanal">📅 {t('common.weekly')}</option>
+                  <option value="quincenal">📅 {t('planPago.biweekly')}</option>
+                  <option value="mensual">📅 {t('common.monthly')}</option>
                 </select>
               </div>
             </div>
 
-            <label style={styles.label}>Fecha de Inicio *</label>
+            <label style={styles.label}>{t('planPago.startDate')} *</label>
             <input
               type="date"
               style={styles.input}
@@ -338,10 +344,10 @@ export default function CrearPlanPagoScreen() {
               onChange={(e) => updateFormField('fecha_inicio', e.target.value)}
             />
 
-            <label style={styles.label}>Notas Adicionales (opcional)</label>
+            <label style={styles.label}>{t('patients.additionalNotes')} ({t('common.optional')})</label>
             <textarea
               style={{...styles.input, ...styles.textArea}}
-              placeholder="Notas sobre el plan de pago..."
+              placeholder={t('planPago.notesPlaceholder')}
               value={formData.notas}
               onChange={(e) => updateFormField('notas', e.target.value)}
               rows={2}
@@ -352,18 +358,18 @@ export default function CrearPlanPagoScreen() {
           {cuotasPreview.length > 0 && (
             <div style={styles.section}>
               <div style={styles.sectionTitle}>
-                📋 Preview de Cuotas ({cuotasPreview.length})
+                📋 {t('planPago.installmentPreview')} ({cuotasPreview.length}) ({cuotasPreview.length})
               </div>
 
               <div style={styles.previewContainer}>
                 {cuotasPreview.map((cuota, index) => (
                   <div key={index} style={styles.cuotaPreviewItem}>
-                    <div style={styles.cuotaNumber}>Cuota {cuota.numero}</div>
+                    <div style={styles.cuotaNumber}>{t('planPago.installment')} {cuota.numero}</div>
                     <div style={styles.cuotaMonto}>
-                      {config?.simbolo_moneda} {cuota.monto.toLocaleString()}
+                     {formatMoney(cuota.monto)}
                     </div>
                     <div style={styles.cuotaFecha}>
-                      Vence: {new Date(cuota.fechaVencimiento).toLocaleDateString('es-ES', {
+                      {t('planPago.dueDate')}: {new Date(cuota.fechaVencimiento).toLocaleDateString(i18n.language, {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
@@ -376,7 +382,7 @@ export default function CrearPlanPagoScreen() {
               <div style={styles.totalPreview}>
                 <span style={styles.totalLabel}>TOTAL:</span>
                 <span style={styles.totalValue}>
-                  {config?.simbolo_moneda} {parseFloat(formData.monto_total).toLocaleString()}
+                  {formatMoney(parseFloat(formData.monto_total))}
                 </span>
               </div>
             </div>
@@ -388,7 +394,8 @@ export default function CrearPlanPagoScreen() {
               onClick={() => navigate(`/paciente/${pacienteId}`)}
               style={styles.cancelButton}
             >
-              Cancelar
+              {t('common.cancel')}
+
             </button>
             <button
               onClick={handleSave}
@@ -398,7 +405,7 @@ export default function CrearPlanPagoScreen() {
                 ...((saving || cuotasPreview.length === 0) && styles.saveButtonDisabled)
               }}
             >
-              {saving ? 'Guardando...' : '💾 Crear Plan de Pago'}
+              {saving ? t('common.saving') : `💾 ${t('planPago.createPlan')}`}
             </button>
           </div>
         </div>
@@ -406,7 +413,7 @@ export default function CrearPlanPagoScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

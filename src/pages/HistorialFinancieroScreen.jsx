@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
 
 export default function HistorialFinancieroScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
   const [loading, setLoading] = useState(true)
   const [movimientos, setMovimientos] = useState([])
   const [config, setConfig] = useState(null)
@@ -88,18 +92,16 @@ export default function HistorialFinancieroScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar datos financieros')
+      alert(t('errors.loadError', { item: t('historial.title') }))
     } finally {
       setLoading(false)
     }
   }
 
-  const formatMoney = (value) => {
-    return `${config?.simbolo_moneda || 'Gs.'} ${Number(value).toLocaleString('es-PY')}`
-  }
+ 
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    return new Date(dateString).toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -164,7 +166,7 @@ export default function HistorialFinancieroScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando historial financiero...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -174,12 +176,12 @@ export default function HistorialFinancieroScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>💰 Historial Financiero</div>
+          <div style={styles.title}>💰 {t('historial.title')}</div>
           <div style={styles.subtitle}>
-            {movimientosFiltrados.length} movimientos
+            {t('historial.movementsCount', { count: movimientosFiltrados.length })}
           </div>
         </div>
         <div style={{ width: '80px' }} />
@@ -189,7 +191,7 @@ export default function HistorialFinancieroScreen() {
         {/* Estadísticas principales */}
         <div style={styles.statsContainer}>
           <div style={{...styles.statCard, borderColor: '#d1fae5'}}>
-            <div style={styles.statLabel}>Ingresos</div>
+            <div style={styles.statLabel}>{t('equipo.income')}</div>
             <div style={{...styles.statValue, color: '#10b981'}}>
               {formatMoney(stats.totalIngresos)}
             </div>
@@ -199,12 +201,12 @@ export default function HistorialFinancieroScreen() {
           </div>
 
           <div style={{...styles.statCard, borderColor: '#fee2e2'}}>
-            <div style={styles.statLabel}>Gastos</div>
+            <div style={styles.statLabel}>{t('equipo.expenses')}</div>
             <div style={{...styles.statValue, color: '#ef4444'}}>
               {formatMoney(stats.totalGastos)}
             </div>
             <div style={styles.statSubtext}>
-              {stats.cantidadGastos} transacciones
+              {t('historial.transactions', { count: stats.cantidadIngresos })}
             </div>
           </div>
 
@@ -213,7 +215,7 @@ export default function HistorialFinancieroScreen() {
             borderColor: stats.balance >= 0 ? '#d1fae5' : '#fee2e2',
             backgroundColor: stats.balance >= 0 ? '#f0fdf4' : '#fef2f2'
           }}>
-            <div style={styles.statLabel}>Balance</div>
+            <div style={styles.statLabel}>{t('cuentas.balance')}</div>
             <div style={{
               ...styles.statValue,
               color: stats.balance >= 0 ? '#10b981' : '#ef4444'
@@ -221,7 +223,7 @@ export default function HistorialFinancieroScreen() {
               {formatMoney(stats.balance)}
             </div>
             <div style={styles.statSubtext}>
-              {stats.balance >= 0 ? 'Positivo' : 'Negativo'}
+              {stats.balance >= 0 ? t('historial.positive') : t('historial.negative')}
             </div>
           </div>
         </div>
@@ -231,31 +233,31 @@ export default function HistorialFinancieroScreen() {
           <div style={styles.filtersRow}>
             {/* Filtro por tipo */}
             <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Tipo</label>
+              <label style={styles.filterLabel}>{t('historial.type')}</label>
               <select
                 style={styles.filterSelect}
                 value={filtroTipo}
                 onChange={(e) => setFiltroTipo(e.target.value)}
               >
-                <option value="todos">📊 Todos</option>
-                <option value="ingreso">💚 Ingresos</option>
-                <option value="gasto">❤️ Gastos</option>
+                <option value="todos">📊 {t('common.all')}</option>
+                <option value="ingreso">💚 {t('equipo.income')}</option>
+                <option value="gasto">❤️ {t('equipo.expenses')}</option>
               </select>
             </div>
 
             {/* Filtro por período */}
             <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Período</label>
+              <label style={styles.filterLabel}>{t('historial.period')}</label>
               <select
                 style={styles.filterSelect}
                 value={filtroFecha}
                 onChange={(e) => setFiltroFecha(e.target.value)}
               >
-                <option value="hoy">Hoy</option>
-                <option value="semana">Última semana</option>
-                <option value="mes">Este mes</option>
-                <option value="año">Este año</option>
-                <option value="personalizado">Personalizado</option>
+                <option value="hoy">{t('common.today')}</option>
+                <option value="semana">{t('historial.lastWeek')}</option>
+                <option value="mes">{t('equipo.thisMonth')}</option>
+                <option value="año">{t('historial.thisYear')}</option>
+                <option value="personalizado">{t('historial.custom')}</option>
               </select>
             </div>
 
@@ -263,7 +265,7 @@ export default function HistorialFinancieroScreen() {
             {filtroFecha === 'personalizado' && (
               <>
                 <div style={styles.filterGroup}>
-                  <label style={styles.filterLabel}>Desde</label>
+                  <label style={styles.filterLabel}>{t('historial.from')}</label>
                   <input
                     type="date"
                     style={styles.filterInput}
@@ -272,7 +274,7 @@ export default function HistorialFinancieroScreen() {
                   />
                 </div>
                 <div style={styles.filterGroup}>
-                  <label style={styles.filterLabel}>Hasta</label>
+                  <label style={styles.filterLabel}>{t('historial.to')}</label>
                   <input
                     type="date"
                     style={styles.filterInput}
@@ -290,7 +292,7 @@ export default function HistorialFinancieroScreen() {
           <div style={styles.emptyState}>
             <div style={styles.emptyIcon}>💰</div>
             <div style={styles.emptyText}>
-              No hay movimientos financieros en el período seleccionado
+              {t('historial.noMovements')}
             </div>
           </div>
         ) : (
@@ -331,7 +333,7 @@ export default function HistorialFinancieroScreen() {
                         <div style={styles.movTipo}>
                           {mov.tipo === 'ingreso' ? '⬇️' : '⬆️'} 
                           <span style={{ marginLeft: '8px' }}>
-                            {mov.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'}
+                            {mov.tipo === 'ingreso' ? t('equipo.income') : t('equipo.expenses')}
                           </span>
                         </div>
                         <div style={{
@@ -389,7 +391,7 @@ export default function HistorialFinancieroScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

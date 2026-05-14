@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useSuscripcion } from '../hooks/SuscripcionContext'
 
@@ -7,6 +8,7 @@ const DESCUENTO_ANUAL = 0.20
 
 export default function PlanesScreen() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [planes, setPlanes] = useState([])
   const [loading, setLoading] = useState(true)
   const [procesando, setProcesando] = useState(false)
@@ -14,7 +16,6 @@ export default function PlanesScreen() {
 
   const { userProfile, suscripcion, plan: planActual, refreshData } = useSuscripcion()
 
-  // ═══ MODAL DE COMPRA ═══
   const [compraModal, setCompraModal] = useState({ isOpen: false, plan: null })
   const [compraForm, setCompraForm] = useState({
     nombre_clinica: '',
@@ -31,7 +32,6 @@ export default function PlanesScreen() {
     loadPlanes()
   }, [])
 
-  // Pre-llenar form con datos del usuario
   useEffect(() => {
     if (userProfile) {
       setCompraForm(prev => ({
@@ -80,17 +80,16 @@ export default function PlanesScreen() {
     if (!userProfile?.id) return
 
     if (planActual?.id === plan.id) {
-      alert('Ya tienes este plan activo')
+      alert(t('plans.alreadyActive'))
       return
     }
 
     if (plan.codigo === 'free') {
-      if (!window.confirm('¿Estás seguro que deseas cambiar al plan gratuito? Perderás las funciones premium.')) return
+      if (!window.confirm(t('plans.changeToFreeConfirm'))) return
       await cambiarPlan(plan)
       return
     }
 
-    // Abrir modal de compra
     setCompraModal({ isOpen: true, plan })
     setCompraEnviada(false)
   }
@@ -103,18 +102,18 @@ export default function PlanesScreen() {
         .update({ plan_id: nuevoPlan.id, updated_at: new Date().toISOString() })
         .eq('dentista_id', userProfile.id)
       if (error) throw error
-      alert(`Plan cambiado a ${nuevoPlan.nombre}`)
+      alert(t('plans.planChanged', { plan: nuevoPlan.nombre }))
       refreshData()
     } catch (error) {
-      alert('Error al cambiar de plan')
+      alert(t('errors.generic'))
     } finally {
       setProcesando(false)
     }
   }
 
- const enviarSolicitudCompra = async () => {
+  const enviarSolicitudCompra = async () => {
     if (!compraForm.nombre_contacto.trim() || !compraForm.email.trim()) {
-      alert('Por favor completá tu nombre y email')
+      alert(t('planesScreen.formRequired'))
       return
     }
 
@@ -124,7 +123,6 @@ export default function PlanesScreen() {
     const total = getPrecioTotal(plan.precio_mensual_usd)
 
     try {
-      // Registrar interés en la BD
       await supabase.from('intereses_planes').insert({
         dentista_id: userProfile.id,
         plan_id: plan.id,
@@ -133,11 +131,10 @@ export default function PlanesScreen() {
         estado: 'pendiente',
         notas: `Ciclo: ${ciclo} | $${precioMes}/mes | Método: ${compraForm.metodo_pago} | Tel: ${compraForm.telefono} | Clínica: ${compraForm.nombre_clinica} | Email: ${compraForm.email}`
       })
-
       setCompraEnviada(true)
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al enviar la solicitud. Intentá de nuevo.')
+      alert(t('errors.sendError', { item: t('planesScreen.request') }))
     } finally {
       setEnviandoCompra(false)
     }
@@ -148,11 +145,11 @@ export default function PlanesScreen() {
       ? plan.caracteristicas
       : JSON.parse(plan.caracteristicas || '[]')
 
-    const esGratuito = plan.codigo === 'free'
-    const esPro = plan.codigo === 'pro'
+    const esGratuito   = plan.codigo === 'free'
+    const esPro        = plan.codigo === 'pro'
     const esEnterprise = plan.codigo === 'enterprise'
-    const precioMes = getPrecio(plan.precio_mensual_usd)
-    const ahorro = getAhorro(plan.precio_mensual_usd)
+    const precioMes    = getPrecio(plan.precio_mensual_usd)
+    const ahorro       = getAhorro(plan.precio_mensual_usd)
 
     return (
       <div style={{
@@ -160,8 +157,8 @@ export default function PlanesScreen() {
         ...(esPlanActual && styles.planCardActual),
         ...(esPro && styles.planCardPro)
       }}>
-        {esPlanActual && <div style={styles.badgeActual}>Plan Actual</div>}
-        {esPro && <div style={styles.badgePopular}>Más Popular</div>}
+        {esPlanActual && <div style={styles.badgeActual}>{t('plans.currentPlan')}</div>}
+        {esPro && <div style={styles.badgePopular}>{t('plans.mostPopular')}</div>}
 
         <div style={styles.planHeader}>
           <div style={styles.planIcono}>
@@ -175,15 +172,25 @@ export default function PlanesScreen() {
           {esGratuito ? (
             <>
               <div style={styles.precioNumero}>$0</div>
-              <div style={styles.precioPeriodo}>Gratis para siempre</div>
+              <div style={styles.precioPeriodo}>{t('plans.freeForever')}</div>
             </>
           ) : (
             <>
-              {ciclo === 'anual' && <div style={styles.precioTachado}>${plan.precio_mensual_usd}/mes</div>}
+              {ciclo === 'anual' && (
+                <div style={styles.precioTachado}>${plan.precio_mensual_usd}/mes</div>
+              )}
               <div style={styles.precioNumero}>${precioMes}</div>
-              <div style={styles.precioPeriodo}>USD / mes</div>
-              {ciclo === 'anual' && <div style={styles.precioAnual}>Facturado ${getPrecioTotal(plan.precio_mensual_usd)}/año</div>}
-              {ciclo === 'anual' && ahorro > 0 && <div style={styles.ahorroTag}>Ahorrás ${ahorro}/año</div>}
+              <div style={styles.precioPeriodo}>{t('plans.perMonth')}</div>
+              {ciclo === 'anual' && (
+                <div style={styles.precioAnual}>
+                  {t('plans.billedAnnually', { total: getPrecioTotal(plan.precio_mensual_usd) })}
+                </div>
+              )}
+              {ciclo === 'anual' && ahorro > 0 && (
+                <div style={styles.ahorroTag}>
+                  {t('plans.youSave', { amount: ahorro })}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -199,16 +206,22 @@ export default function PlanesScreen() {
 
         <div style={styles.limitesContainer}>
           <div style={styles.limiteInfo}>
-            👥 {plan.limite_pacientes ? `Hasta ${plan.limite_pacientes} pacientes` : 'Pacientes ilimitados'}
+            👥 {plan.limite_pacientes
+              ? t('plans.patientsLimit', { limit: plan.limite_pacientes })
+              : t('plans.patientsUnlimited')}
           </div>
           {plan.limite_emails_mes !== null && plan.limite_emails_mes > 0 && (
-            <div style={styles.limiteInfo}>📧 {plan.limite_emails_mes} emails/mes</div>
+            <div style={styles.limiteInfo}>
+              📧 {t('plans.emailsPerMonth', { limit: plan.limite_emails_mes })}
+            </div>
           )}
           {plan.limite_whatsapp_mes !== null && plan.limite_whatsapp_mes > 0 && (
-            <div style={styles.limiteInfo}>💬 {plan.limite_whatsapp_mes} WhatsApp/mes</div>
+            <div style={styles.limiteInfo}>
+              💬 {t('plans.whatsappPerMonth', { limit: plan.limite_whatsapp_mes })}
+            </div>
           )}
           {plan.codigo === 'free' && (
-            <div style={styles.limiteInfo}>📨 Sin envío de mensajes</div>
+            <div style={styles.limiteInfo}>📨 {t('plans.noMessaging')}</div>
           )}
         </div>
 
@@ -222,7 +235,11 @@ export default function PlanesScreen() {
           onClick={() => handleSeleccionarPlan(plan)}
           disabled={procesando || esPlanActual}
         >
-          {esPlanActual ? '✓ Plan Actual' : esGratuito ? 'Seleccionar Plan' : 'Contratar Ahora'}
+          {esPlanActual
+            ? `✓ ${t('plans.currentPlan')}`
+            : esGratuito
+              ? t('plans.selectPlan')
+              : t('plans.contractNow')}
         </button>
       </div>
     )
@@ -232,85 +249,123 @@ export default function PlanesScreen() {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loadingSpinner}>🔄</div>
-        <div style={styles.loadingText}>Cargando planes...</div>
+        <div style={styles.loadingText}>{t('planesScreen.loading')}</div>
       </div>
     )
   }
 
   return (
     <div style={styles.container}>
+      {/* Header */}
       <div style={styles.header}>
-        <button onClick={() => navigate('/dashboard')} style={styles.backButton}>← Volver</button>
+        <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
+          {t('common.back')}
+        </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>⭐ Planes y Precios</div>
-          <div style={styles.subtitle}>Elige el plan perfecto para tu clínica</div>
+          <div style={styles.title}>{t('planesScreen.title')}</div>
+          <div style={styles.subtitle}>{t('plans.subtitle')}</div>
         </div>
-        <button onClick={() => navigate('/historial-pagos')} style={styles.historialButton}>📋 Mis pagos</button>
+        <button
+          onClick={() => navigate('/historial-pagos')}
+          style={styles.historialButton}
+        >
+          📋 {t('plans.myPayments')}
+        </button>
       </div>
 
       <div style={styles.content}>
+        {/* Plan actual */}
         {planActual && (
           <div style={styles.infoActual}>
-            <div style={styles.infoActualTexto}>Tu plan actual: <strong>{planActual.nombre}</strong></div>
+            <div style={styles.infoActualTexto}>
+              {t('plans.yourPlan', { plan: planActual.nombre })}
+            </div>
             {suscripcion?.mensajes_usados_mes !== undefined && planActual.limite_mensajes_mes && (
-              <div style={styles.infoUsage}>📨 Mensajes usados: {suscripcion.mensajes_usados_mes} / {planActual.limite_mensajes_mes}</div>
+              <div style={styles.infoUsage}>
+                📨 {t('plans.messagesUsed', {
+                  used: suscripcion.mensajes_usados_mes,
+                  limit: planActual.limite_mensajes_mes
+                })}
+              </div>
             )}
           </div>
         )}
 
+        {/* Selector ciclo */}
         <div style={styles.cicloContainer}>
-          <button onClick={() => setCiclo('mensual')} style={{...styles.cicloBtn, ...(ciclo === 'mensual' ? styles.cicloBtnActivo : {})}}>Mensual</button>
-          <button onClick={() => setCiclo('anual')} style={{...styles.cicloBtn, ...(ciclo === 'anual' ? styles.cicloBtnActivo : {})}}>
-            Anual <span style={styles.cicloBadge}>-{DESCUENTO_ANUAL * 100}%</span>
+          <button
+            onClick={() => setCiclo('mensual')}
+            style={{ ...styles.cicloBtn, ...(ciclo === 'mensual' ? styles.cicloBtnActivo : {}) }}
+          >
+            {t('common.monthly')}
+          </button>
+          <button
+            onClick={() => setCiclo('anual')}
+            style={{ ...styles.cicloBtn, ...(ciclo === 'anual' ? styles.cicloBtnActivo : {}) }}
+          >
+            {t('common.annual')}{' '}
+            <span style={styles.cicloBadge}>
+              {t('plans.discount', { percent: DESCUENTO_ANUAL * 100 })}
+            </span>
           </button>
         </div>
 
+        {/* Grid de planes */}
         <div style={styles.planesGrid}>
-          {planes.map(plan => <PlanCard key={plan.id} plan={plan} esPlanActual={planActual?.id === plan.id} />)}
+          {planes.map(plan => (
+            <PlanCard key={plan.id} plan={plan} esPlanActual={planActual?.id === plan.id} />
+          ))}
         </div>
 
+        {/* Info adicional */}
         <div style={styles.infoAdicional}>
-          <div style={styles.infoTitulo}>📞 ¿Necesitas ayuda?</div>
+          <div style={styles.infoTitulo}>{t('plans.needHelp')}</div>
           <div style={styles.infoTexto}>WhatsApp: <strong>+595 994 747 485</strong></div>
           <div style={styles.infoTexto}>Email: <strong>soporte@odontolog.lat</strong></div>
         </div>
 
+        {/* Garantía */}
         <div style={styles.garantia}>
-          <div style={styles.garantiaTitulo}>✅ Garantía de 30 días</div>
-          <div style={styles.garantiaTexto}>Si no estás satisfecho con tu plan, te devolvemos tu dinero. Sin preguntas.</div>
+          <div style={styles.garantiaTitulo}>{t('plans.guarantee')}</div>
+          <div style={styles.garantiaTexto}>{t('plans.guaranteeText')}</div>
         </div>
       </div>
 
-      {/* ═══════ MODAL DE COMPRA ═══════ */}
+      {/* ═══ MODAL DE COMPRA ═══ */}
       {compraModal.isOpen && (
-        <div style={styles.overlay} onClick={() => !enviandoCompra && setCompraModal({ isOpen: false, plan: null })}>
+        <div
+          style={styles.overlay}
+          onClick={() => !enviandoCompra && setCompraModal({ isOpen: false, plan: null })}
+        >
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             {!compraEnviada ? (
               <>
-                <h3 style={styles.modalTitle}>🎉 Contratar Plan {compraModal.plan?.nombre}</h3>
+                <h3 style={styles.modalTitle}>
+                  🎉 {t('plans.contactForm.title', { plan: compraModal.plan?.nombre })}
+                </h3>
 
                 {/* Resumen del plan */}
                 <div style={styles.planResumen}>
                   <div style={styles.planResumenRow}>
-                    <span>Plan:</span>
+                    <span>{t('planesScreen.modalPlan')}</span>
                     <span style={{ fontWeight: '700' }}>{compraModal.plan?.nombre}</span>
                   </div>
                   <div style={styles.planResumenRow}>
-                    <span>Precio:</span>
+                    <span>{t('common.price')}</span>
                     <span style={{ fontWeight: '700', color: '#1e40af' }}>
-                      ${getPrecio(compraModal.plan?.precio_mensual_usd)} USD/mes
+                      ${getPrecio(compraModal.plan?.precio_mensual_usd)} {t('plans.perMonth')}
                     </span>
                   </div>
                   {ciclo === 'anual' && (
                     <>
                       <div style={styles.planResumenRow}>
-                        <span>Total anual:</span>
+                        <span>{t('planesScreen.modalAnnualTotal')}</span>
                         <span>${getPrecioTotal(compraModal.plan?.precio_mensual_usd)} USD</span>
                       </div>
                       <div style={styles.planResumenRow}>
-                        <span>Ahorro:</span>
+                        <span>{t('planesScreen.modalSaving')}</span>
                         <span style={{ color: '#10b981', fontWeight: '700' }}>
-                          ${getAhorro(compraModal.plan?.precio_mensual_usd)} USD/año
+                          ${getAhorro(compraModal.plan?.precio_mensual_usd)} {t('planesScreen.modalSavingYear')}
                         </span>
                       </div>
                     </>
@@ -319,62 +374,62 @@ export default function PlanesScreen() {
 
                 {/* Formulario */}
                 <div style={styles.formSection}>
-                  <div style={styles.formTitle}>Datos de contacto</div>
+                  <div style={styles.formTitle}>{t('planesScreen.formContact')}</div>
 
-                  <label style={styles.formLabel}>Nombre de la clínica</label>
+                  <label style={styles.formLabel}>{t('plans.contactForm.clinicName')}</label>
                   <input
                     type="text"
                     value={compraForm.nombre_clinica}
-                    onChange={e => setCompraForm({...compraForm, nombre_clinica: e.target.value})}
-                    placeholder="Ej: Clínica Dental Sonrisas"
+                    onChange={e => setCompraForm({ ...compraForm, nombre_clinica: e.target.value })}
+                    placeholder={t('planesScreen.clinicPlaceholder')}
                     style={styles.formInput}
                   />
 
-                  <label style={styles.formLabel}>Nombre de contacto *</label>
+                  <label style={styles.formLabel}>{t('plans.contactForm.contactName')} *</label>
                   <input
                     type="text"
                     value={compraForm.nombre_contacto}
-                    onChange={e => setCompraForm({...compraForm, nombre_contacto: e.target.value})}
-                    placeholder="Ej: Dr. Juan Pérez"
+                    onChange={e => setCompraForm({ ...compraForm, nombre_contacto: e.target.value })}
+                    placeholder={t('planesScreen.contactPlaceholder')}
                     style={styles.formInput}
                   />
 
-                  <label style={styles.formLabel}>Email *</label>
+                  <label style={styles.formLabel}>{t('common.email')} *</label>
                   <input
                     type="email"
                     value={compraForm.email}
-                    onChange={e => setCompraForm({...compraForm, email: e.target.value})}
-                    placeholder="tu@email.com"
+                    onChange={e => setCompraForm({ ...compraForm, email: e.target.value })}
+                    placeholder={t('planesScreen.emailPlaceholder')}
                     style={styles.formInput}
                   />
 
-                  <label style={styles.formLabel}>Teléfono / WhatsApp</label>
+                  <label style={styles.formLabel}>{t('plans.contactForm.phone')}</label>
                   <input
                     type="tel"
                     value={compraForm.telefono}
-                    onChange={e => setCompraForm({...compraForm, telefono: e.target.value})}
-                    placeholder="+595 981 123 456"
+                    onChange={e => setCompraForm({ ...compraForm, telefono: e.target.value })}
+                    placeholder={t('planesScreen.phonePlaceholder')}
                     style={styles.formInput}
                   />
 
-                  <label style={styles.formLabel}>Método de pago preferido</label>
+                  <label style={styles.formLabel}>{t('plans.contactForm.paymentMethod')}</label>
                   <select
                     value={compraForm.metodo_pago}
-                    onChange={e => setCompraForm({...compraForm, metodo_pago: e.target.value})}
+                    onChange={e => setCompraForm({ ...compraForm, metodo_pago: e.target.value })}
                     style={styles.formSelect}
                   >
-                    <option value="transferencia">Transferencia bancaria</option>
-                    <option value="tarjeta">Tarjeta de crédito/débito</option>
-                    <option value="giro_tigo">Giro Tigo Money</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="otro">Otro</option>
+                    <option value="transferencia">{t('plans.contactForm.transfer')}</option>
+                    <option value="tarjeta">{t('plans.contactForm.card')}</option>
+                    <option value="giro_tigo">{t('plans.contactForm.giroTigo')}</option>
+                    <option value="paypal">{t('plans.contactForm.paypal')}</option>
+                    <option value="otro">{t('plans.contactForm.other')}</option>
                   </select>
 
-                  <label style={styles.formLabel}>Notas adicionales</label>
+                  <label style={styles.formLabel}>{t('plans.contactForm.additionalNotes')}</label>
                   <textarea
                     value={compraForm.notas}
-                    onChange={e => setCompraForm({...compraForm, notas: e.target.value})}
-                    placeholder="Consultas, preferencias de horario para contacto, etc."
+                    onChange={e => setCompraForm({ ...compraForm, notas: e.target.value })}
+                    placeholder={t('planesScreen.notesPlaceholder')}
                     style={styles.formTextarea}
                     rows={3}
                   />
@@ -386,14 +441,14 @@ export default function PlanesScreen() {
                     style={styles.cancelBtn}
                     disabled={enviandoCompra}
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </button>
                   <button
                     onClick={enviarSolicitudCompra}
                     disabled={enviandoCompra}
                     style={styles.submitBtn}
                   >
-                    {enviandoCompra ? 'Enviando...' : 'Enviar solicitud'}
+                    {enviandoCompra ? t('common.sending') : t('plans.contactForm.submit')}
                   </button>
                 </div>
               </>
@@ -401,29 +456,40 @@ export default function PlanesScreen() {
               /* ═══ CONFIRMACIÓN ═══ */
               <div style={styles.confirmacion}>
                 <div style={styles.confirmIcon}>✅</div>
-                <h3 style={styles.confirmTitle}>¡Solicitud enviada!</h3>
+                <h3 style={styles.confirmTitle}>{t('plans.contactForm.successTitle')}</h3>
                 <p style={styles.confirmText}>
-                  Recibimos tu solicitud para el plan <strong>{compraModal.plan?.nombre}</strong>.
+                  {t('plans.contactForm.successMessage', { plan: compraModal.plan?.nombre })}
                 </p>
                 <p style={styles.confirmText}>
-                  Nos pondremos en contacto contigo en las próximas horas para coordinar el pago y activar tu plan.
+                  {t('plans.contactForm.successContact')}
                 </p>
 
                 <div style={styles.confirmContacto}>
-                  <div style={styles.confirmContactoTitle}>¿Necesitas respuesta inmediata?</div>
-                  <div style={styles.confirmContactoItem}>
-                    📱 WhatsApp: <a href="https://wa.me/595994747485" style={{ color: '#1e40af', fontWeight: '600' }}>+595 994 747 485</a>
+                  <div style={styles.confirmContactoTitle}>
+                    {t('plans.contactForm.immediateResponse')}
                   </div>
                   <div style={styles.confirmContactoItem}>
-                    📧 Email: <a href="mailto:soporte@odontolog.lat" style={{ color: '#1e40af', fontWeight: '600' }}>soporte@odontolog.lat</a>
+                    📱 WhatsApp:{' '}
+                    <a href="https://wa.me/595994747485" style={{ color: '#1e40af', fontWeight: '600' }}>
+                      +595 994 747 485
+                    </a>
+                  </div>
+                  <div style={styles.confirmContactoItem}>
+                    📧 Email:{' '}
+                    <a href="mailto:soporte@odontolog.lat" style={{ color: '#1e40af', fontWeight: '600' }}>
+                      soporte@odontolog.lat
+                    </a>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => { setCompraModal({ isOpen: false, plan: null }); navigate('/dashboard') }}
+                  onClick={() => {
+                    setCompraModal({ isOpen: false, plan: null })
+                    navigate('/dashboard')
+                  }}
                   style={styles.submitBtn}
                 >
-                  Volver al Dashboard
+                  {t('plans.contactForm.backToDashboard')}
                 </button>
               </div>
             )}
@@ -431,8 +497,11 @@ export default function PlanesScreen() {
         </div>
       )}
 
+      {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>OdontoLog • Planes y Precios</div>
+        <div style={styles.footerText}>
+          {t('common.footerBrand')} • {t('planesScreen.titlePlain')}
+        </div>
       </div>
     </div>
   )
@@ -491,8 +560,6 @@ const styles = {
   garantiaTexto: { fontSize: '14px', color: '#047857' },
   footer: { textAlign: 'center', padding: '16px', backgroundColor: '#ffffff', borderTop: '1px solid #e5e7eb' },
   footerText: { fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' },
-
-  // Modal
   overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' },
   modal: { backgroundColor: '#ffffff', borderRadius: '20px', padding: '32px', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' },
   modalTitle: { fontSize: '22px', fontWeight: '700', color: '#1f2937', marginBottom: '20px', textAlign: 'center' },
@@ -507,8 +574,6 @@ const styles = {
   modalActions: { display: 'flex', gap: '12px', marginTop: '20px' },
   cancelBtn: { flex: 1, padding: '14px', backgroundColor: 'transparent', border: '1px solid #d1d5db', borderRadius: '12px', fontSize: '14px', fontWeight: '600', color: '#6b7280', cursor: 'pointer' },
   submitBtn: { flex: 1, padding: '14px', backgroundColor: '#1e40af', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '700', color: '#ffffff', cursor: 'pointer', width: '100%' },
-
-  // Confirmación
   confirmacion: { textAlign: 'center', padding: '10px 0' },
   confirmIcon: { fontSize: '64px', marginBottom: '16px' },
   confirmTitle: { fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '16px' },

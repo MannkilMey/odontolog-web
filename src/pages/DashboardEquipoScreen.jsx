@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
+
+
 
 export default function DashboardEquipoScreen() {
   const navigate = useNavigate()
-  
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
+
+
   const [loading, setLoading] = useState(true)
   const [isEnterprise, setIsEnterprise] = useState(false)
   const [metricas, setMetricas] = useState([])
@@ -65,7 +72,7 @@ export default function DashboardEquipoScreen() {
 
       // Cargar métricas para cada perfil + el owner
       const dentistas = [
-        { dentista_id: user.id, nombre: 'Yo', isOwner: true },
+        { dentista_id: user.id, nombre: t('equipo.me'), isOwner: true },
         ...(perfilesData || []).map(p => ({
           dentista_id: p.dentista.id,
           nombre: `${p.dentista.nombre} ${p.dentista.apellido}`,
@@ -109,7 +116,7 @@ export default function DashboardEquipoScreen() {
 
     } catch (error) {
       console.error('Error general:', error)
-      alert('Error al cargar métricas del equipo: ' + error.message)
+       alert(t('errors.loadError', { item: t('equipo.teamDashboard') }) + ': ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -128,7 +135,7 @@ export default function DashboardEquipoScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando dashboard...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -138,22 +145,22 @@ export default function DashboardEquipoScreen() {
       <div style={styles.container}>
         <div style={styles.header}>
           <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-            ← Volver
+            {t('common.back')}
           </button>
-          <div style={styles.title}>📊 Dashboard del Equipo</div>
+          <div style={styles.title}>📊 {t('equipo.teamDashboard')}</div>
         </div>
         <div style={styles.content}>
           <div style={styles.upgradeCard}>
             <div style={styles.upgradeIcon}>⭐</div>
-            <div style={styles.upgradeTitle}>Función Enterprise</div>
+            <div style={styles.upgradeTitle}>{t('equipo.enterpriseFeature')}</div>
             <div style={styles.upgradeText}>
-              Actualiza a Enterprise para ver métricas consolidadas de todo tu equipo
+              {t('equipo.upgradeText')}
             </div>
             <button
               style={styles.upgradeButton}
               onClick={() => navigate('/suscripcion')}
             >
-              Ver Planes
+              {t('limits.viewPlans')}
             </button>
           </div>
         </div>
@@ -168,17 +175,17 @@ export default function DashboardEquipoScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📊 Dashboard del Equipo</div>
-          <div style={styles.subtitle}>{metricas.length} miembros activos</div>
+          <div style={styles.title}>📊 {t('equipo.teamDashboard')}</div>
+          <div style={styles.subtitle}>{t('equipo.activeMembers', { count: metricas.length })}</div>
         </div>
         <button
           onClick={() => navigate('/gestion-equipo')}
           style={styles.manageButton}
         >
-          ⚙️ Gestionar
+          ⚙️ {t('equipo.manage')}
         </button>
       </div>
 
@@ -192,34 +199,34 @@ export default function DashboardEquipoScreen() {
             }}
             onClick={() => setPeriodo('mes_actual')}
           >
-            Este Mes
+            {t('equipo.thisMonth')}
           </button>
         </div>
 
         {/* Resumen General */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>📈 Resumen General del Equipo</div>
+          <div style={styles.sectionTitle}>📈 {t('equipo.teamSummary')}</div>
           <div style={styles.totalesGrid}>
             <div style={styles.totalCard}>
               <div style={styles.totalIcon}>👥</div>
               <div style={styles.totalValue}>{totales.pacientes}</div>
-              <div style={styles.totalLabel}>Pacientes Totales</div>
+              <div style={styles.totalLabel}>{t('dashboard.totalPatients')}</div>
             </div>
             
             <div style={styles.totalCard}>
               <div style={styles.totalIcon}>💰</div>
               <div style={styles.totalValue}>
-                Gs. {totales.ingresos.toLocaleString('es-PY')}
+                {formatMoney(totales.ingresos)}
               </div>
-              <div style={styles.totalLabel}>Ingresos Este Mes</div>
+              <div style={styles.totalLabel}>{t('equipo.monthlyIncome')}</div>
             </div>
             
             <div style={styles.totalCard}>
               <div style={styles.totalIcon}>📉</div>
               <div style={styles.totalValue}>
-                Gs. {totales.gastos.toLocaleString('es-PY')}
+                {formatMoney(totales.gastos)}
               </div>
-              <div style={styles.totalLabel}>Gastos Este Mes</div>
+              <div style={styles.totalLabel}>{t('equipo.monthlyExpenses')}</div>
             </div>
             
             <div style={{
@@ -234,9 +241,9 @@ export default function DashboardEquipoScreen() {
                 ...styles.totalValue,
                 color: totales.balance >= 0 ? '#059669' : '#dc2626'
               }}>
-                Gs. {totales.balance.toLocaleString('es-PY')}
+                {formatMoney(totales.balance)}
               </div>
-              <div style={styles.totalLabel}>Balance</div>
+              <div style={styles.totalLabel}>{t('cuentas.balance')}</div>
             </div>
           </div>
 
@@ -244,20 +251,20 @@ export default function DashboardEquipoScreen() {
             <div style={styles.totalCard}>
               <div style={styles.totalIcon}>📅</div>
               <div style={styles.totalValue}>{totales.citas}</div>
-              <div style={styles.totalLabel}>Citas Este Mes</div>
+              <div style={styles.totalLabel}>{t('equipo.monthlyAppointments')}</div>
             </div>
             
             <div style={styles.totalCard}>
               <div style={styles.totalIcon}>🦷</div>
               <div style={styles.totalValue}>{totales.procedimientos}</div>
-              <div style={styles.totalLabel}>Procedimientos</div>
+              <div style={styles.totalLabel}>{t('equipo.procedures')}</div>
             </div>
           </div>
         </div>
 
         {/* Métricas por Miembro */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>👤 Métricas por Miembro</div>
+          <div style={styles.sectionTitle}>👤  {t('equipo.memberMetrics')}</div>
           
           {metricas.map((metrica, idx) => (
             <div key={idx} style={styles.miembroCard}>
@@ -265,13 +272,13 @@ export default function DashboardEquipoScreen() {
                 <div style={styles.miembroInfo}>
                   <div style={styles.miembroNombre}>
                     {metrica.nombre}
-                    {metrica.isOwner && <span style={styles.ownerBadge}>👑 Dueño</span>}
+                    {metrica.isOwner && <span style={styles.ownerBadge}>👑 {t('equipo.owner')}</span>}
                   </div>
                   {metrica.rol && (
                     <div style={styles.miembroRol}>
-                      {metrica.rol === 'admin' && '⭐ Administrador'}
-                      {metrica.rol === 'colaborador' && '👤 Colaborador'}
-                      {metrica.rol === 'asistente' && '📋 Asistente'}
+                      {metrica.rol === 'admin' && `⭐ ${t('equipo.roles.admin')}`}
+                      {metrica.rol === 'colaborador' && `👤 ${t('equipo.roles.collaborator')}`}
+                      {metrica.rol === 'asistente' && `📋 ${t('equipo.roles.assistant')}`}
                     </div>
                   )}
                 </div>
@@ -279,42 +286,42 @@ export default function DashboardEquipoScreen() {
                   onClick={() => navigate(`/metricas-perfil/${metrica.dentista_id}`)}
                   style={styles.detailButton}
                 >
-                  Ver Detalle →
+                  {t('common.details')} →
                 </button>
               </div>
 
               <div style={styles.miembroMetricas}>
                 <div style={styles.metricaItem}>
-                  <div style={styles.metricaLabel}>Pacientes</div>
+                  <div style={styles.metricaLabel}>{t('patients.title')}</div>
                   <div style={styles.metricaValue}>{metrica.total_pacientes || 0}</div>
                 </div>
                 
                 <div style={styles.metricaItem}>
-                  <div style={styles.metricaLabel}>Ingresos</div>
+                  <div style={styles.metricaLabel}>{t('equipo.income')}</div>
                   <div style={styles.metricaValue}>
-                    Gs. {(metrica.ingresos_mes_actual || 0).toLocaleString('es-PY')}
+                    {formatMoney(metrica.ingresos_mes_actual || 0)}
                   </div>
                 </div>
                 
                 <div style={styles.metricaItem}>
-                  <div style={styles.metricaLabel}>Gastos</div>
+                  <div style={styles.metricaLabel}>{t('equipo.expenses')}</div>
                   <div style={styles.metricaValue}>
-                    Gs. {(metrica.gastos_mes_actual || 0).toLocaleString('es-PY')}
+                    {formatMoney(metrica.gastos_mes_actual || 0)}
                   </div>
                 </div>
                 
                 <div style={styles.metricaItem}>
-                  <div style={styles.metricaLabel}>Balance</div>
+                  <div style={styles.metricaLabel}>{t('cuentas.balance')}</div>
                   <div style={{
                     ...styles.metricaValue,
                     color: (metrica.balance_mes || 0) >= 0 ? '#059669' : '#dc2626'
                   }}>
-                    Gs. {(metrica.balance_mes || 0).toLocaleString('es-PY')}
+                    {formatMoney(metrica.balance_mes || 0)}
                   </div>
                 </div>
                 
                 <div style={styles.metricaItem}>
-                  <div style={styles.metricaLabel}>Citas</div>
+                  <div style={styles.metricaLabel}>{t('nav.appointments')}</div>
                   <div style={styles.metricaValue}>{metrica.citas_mes_actual || 0}</div>
                 </div>
               </div>
@@ -322,7 +329,7 @@ export default function DashboardEquipoScreen() {
               {/* Barra de contribución */}
               <div style={styles.contribucionBar}>
                 <div style={styles.contribucionLabel}>
-                  Contribución a ingresos totales
+                  {t('equipo.incomeContribution')}
                 </div>
                 <div style={styles.progressBar}>
                   <div
@@ -342,12 +349,12 @@ export default function DashboardEquipoScreen() {
 
         {/* Ranking */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>🏆 Ranking del Mes</div>
+          <div style={styles.sectionTitle}>🏆 {t('equipo.monthlyRanking')}</div>
           
           <div style={styles.rankingGrid}>
             {/* Top Ingresos */}
             <div style={styles.rankingCard}>
-              <div style={styles.rankingTitle}>💰 Mayor Ingreso</div>
+              <div style={styles.rankingTitle}>💰 {t('equipo.topIncome')}</div>
               {metricas
                 .sort((a, b) => (b.ingresos_mes_actual || 0) - (a.ingresos_mes_actual || 0))
                 .slice(0, 3)
@@ -360,7 +367,7 @@ export default function DashboardEquipoScreen() {
                     </div>
                     <div style={styles.rankingNombre}>{m.nombre}</div>
                     <div style={styles.rankingValor}>
-                      Gs. {(m.ingresos_mes_actual || 0).toLocaleString('es-PY')}
+                     {formatMoney(m.ingresos_mes_actual || 0)}
                     </div>
                   </div>
                 ))}
@@ -368,7 +375,7 @@ export default function DashboardEquipoScreen() {
 
             {/* Más Pacientes */}
             <div style={styles.rankingCard}>
-              <div style={styles.rankingTitle}>👥 Más Pacientes</div>
+              <div style={styles.rankingTitle}>👥 {t('equipo.topPatients')}</div>
               {metricas
                 .sort((a, b) => (b.total_pacientes || 0) - (a.total_pacientes || 0))
                 .slice(0, 3)
@@ -387,7 +394,7 @@ export default function DashboardEquipoScreen() {
 
             {/* Más Productivo */}
             <div style={styles.rankingCard}>
-              <div style={styles.rankingTitle}>🦷 Más Procedimientos</div>
+              <div style={styles.rankingTitle}>🦷 {t('equipo.topProcedures')}</div>
               {metricas
                 .sort((a, b) => (b.procedimientos_mes_actual || 0) - (a.procedimientos_mes_actual || 0))
                 .slice(0, 3)
@@ -409,7 +416,7 @@ export default function DashboardEquipoScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

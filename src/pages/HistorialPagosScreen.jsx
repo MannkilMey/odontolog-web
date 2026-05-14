@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
 
 export default function HistorialPagosScreen() {
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
   const [user, setUser] = useState(null)
   const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -39,10 +43,10 @@ export default function HistorialPagosScreen() {
 
   const getEstadoBadge = (estado) => {
     const badges = {
-      pendiente: { color: '#f59e0b', text: '⏳ Pendiente' },
-      aprobado: { color: '#10b981', text: '✓ Aprobado' },
-      rechazado: { color: '#ef4444', text: '✗ Rechazado' },
-      cancelado: { color: '#6b7280', text: '⊘ Cancelado' }
+      pendiente: { color: '#f59e0b', text: `⏳ ${t('historialPagos.pending')}` },
+      aprobado: { color: '#10b981', text: `✓ ${t('historialPagos.approved')}` },
+      rechazado: { color: '#ef4444', text: `✗ ${t('historialPagos.rejected')}` },
+      cancelado: { color: '#6b7280', text: `⊘ ${t('historialPagos.cancelled')}` }
     }
     return badges[estado] || badges.pendiente
   }
@@ -51,21 +55,21 @@ export default function HistorialPagosScreen() {
     <div style={styles.container}>
       <div style={styles.header}>
         <button onClick={() => navigate('/planes')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>💳 Historial de Pagos</div>
+          <div style={styles.title}>💳 {t('dashboard.paymentHistory')}</div>
         </div>
         <div style={{ width: '80px' }} />
       </div>
 
       <div style={styles.content}>
         {loading ? (
-          <div style={styles.loadingText}>Cargando...</div>
+          <div style={styles.loadingText}>{t('common.loading')}</div>
         ) : pagos.length === 0 ? (
           <div style={styles.emptyState}>
             <div style={styles.emptyIcon}>📭</div>
-            <div style={styles.emptyText}>No tienes pagos registrados</div>
+            <div style={styles.emptyText}>{t('historialPagos.noPayments')}</div>
           </div>
         ) : (
           <div style={styles.pagosList}>
@@ -84,32 +88,32 @@ export default function HistorialPagosScreen() {
 
                   <div style={styles.pagoInfo}>
                     <div style={styles.pagoRow}>
-                      <span style={styles.pagoLabel}>Monto:</span>
+                      <span style={styles.pagoLabel}>{t('export.amount')}:</span>
                       <span style={styles.pagoValue}>
-                        Gs. {Number(pago.monto).toLocaleString('es-PY')}
+                        {formatMoney(pago.monto)}
                       </span>
                     </div>
                     <div style={styles.pagoRow}>
-                      <span style={styles.pagoLabel}>Período:</span>
+                      <span style={styles.pagoLabel}>{t('historialPagos.period')}:</span>
                       <span style={styles.pagoValue}>
-                        {new Date(pago.periodo_desde).toLocaleDateString()} - {new Date(pago.periodo_hasta).toLocaleDateString()}
+                        {new Date(pago.periodo_desde).toLocaleDateString(i18n.language)} - {new Date(pago.periodo_hasta).toLocaleDateString(i18n.language)}
                       </span>
                     </div>
                     <div style={styles.pagoRow}>
-                      <span style={styles.pagoLabel}>Fecha de pago:</span>
+                      <span style={styles.pagoLabel}>{t('historialPagos.paymentDate')}:</span>
                       <span style={styles.pagoValue}>
-                        {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString() : '-'}
+                        {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString(i18n.language) : '-'}
                       </span>
                     </div>
                     {pago.metodo_pago && (
                       <div style={styles.pagoRow}>
-                        <span style={styles.pagoLabel}>Método:</span>
+                        <span style={styles.pagoLabel}>{t('export.method')}:</span>
                         <span style={styles.pagoValue}>{pago.metodo_pago}</span>
                       </div>
                     )}
                     {pago.referencia_externa && (
                       <div style={styles.pagoRow}>
-                        <span style={styles.pagoLabel}>Referencia:</span>
+                        <span style={styles.pagoLabel}>{t('historialPagos.reference')}:</span>
                         <span style={styles.pagoValue}>{pago.referencia_externa}</span>
                       </div>
                     )}

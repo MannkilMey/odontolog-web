@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
+
 
 export default function CatalogoProcedimientosScreen() {
   const navigate = useNavigate()
+  const { formatMoney } = useMoneda()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [procedimientos, setProcedimientos] = useState([])
   const [config, setConfig] = useState(null)
@@ -20,15 +25,15 @@ export default function CatalogoProcedimientosScreen() {
   })
 
   const categorias = [
-    { value: 'limpieza', label: 'Limpieza', icon: '🦷' },
-    { value: 'restauracion', label: 'Restauración', icon: '🔵' },
-    { value: 'endodoncia', label: 'Endodoncia', icon: '🟤' },
-    { value: 'cirugia', label: 'Cirugía', icon: '⚕️' },
-    { value: 'ortodencia', label: 'Ortodoncia', icon: '🟣' },
-    { value: 'protesis', label: 'Prótesis', icon: '🟡' },
-    { value: 'estetica', label: 'Estética', icon: '✨' },
-    { value: 'prevencion', label: 'Prevención', icon: '🛡️' },
-    { value: 'otros', label: 'Otros', icon: '📋' }
+    { value: 'limpieza', label: t('catalog.categories.cleaning'), icon: '🦷' },
+    { value: 'restauracion', label: t('catalog.categories.restoration'), icon: '🔵' },
+    { value: 'endodoncia', label:  t('catalog.categories.endodontics'), icon: '🟤' },
+    { value: 'cirugia', label: t('catalog.categories.surgery'), icon: '⚕️' },
+    { value: 'ortodencia', label: t('catalog.categories.orthodontics'), icon: '🟣' },
+    { value: 'protesis', label: t('catalog.categories.prosthetics'), icon: '🟡' },
+    { value: 'estetica', label:  t('catalog.categories.aesthetics'), icon: '✨' },
+    { value: 'prevencion', label: t('catalog.categories.prevention'), icon: '🛡️' },
+    { value: 'otros', label:  t('catalog.categories.other'), icon: '📋' }
   ]
 
   useEffect(() => {
@@ -102,12 +107,12 @@ export default function CatalogoProcedimientosScreen() {
 
   const handleSave = async () => {
     if (!formData.nombre_procedimiento.trim()) {
-      alert('El nombre del procedimiento es requerido')
+      alert(t('errors.requiredField', { field: t('catalog.procedureName') }))
       return
     }
 
     if (!formData.precio_base || parseFloat(formData.precio_base) < 0) {
-      alert('El precio debe ser mayor o igual a 0')
+      alert(t('catalog.priceError'))
       return
     }
 
@@ -133,7 +138,7 @@ export default function CatalogoProcedimientosScreen() {
           .eq('id', editingItem.id)
 
         if (error) throw error
-        alert('✅ Procedimiento actualizado')
+        alert(`✅ ${t('catalog.updated')}`)
       } else {
         // Crear nuevo
         const { error } = await supabase
@@ -141,7 +146,7 @@ export default function CatalogoProcedimientosScreen() {
           .insert(dataToSave)
 
         if (error) throw error
-        alert('✅ Procedimiento agregado')
+        alert(`✅ ${t('catalog.added')}`)
       }
 
       closeModal()
@@ -154,7 +159,7 @@ export default function CatalogoProcedimientosScreen() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de eliminar este procedimiento?')) {
+    if (!window.confirm(t('catalog.deleteConfirm'))) {
       return
     }
 
@@ -165,7 +170,7 @@ export default function CatalogoProcedimientosScreen() {
         .eq('id', id)
 
       if (error) throw error
-      alert('✅ Procedimiento eliminado')
+      alert(`✅ ${t('catalog.deleted')}`)
       loadData()
 
     } catch (error) {
@@ -197,7 +202,7 @@ export default function CatalogoProcedimientosScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando catálogo...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -207,14 +212,14 @@ export default function CatalogoProcedimientosScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📚 Catálogo de Procedimientos</div>
-          <div style={styles.subtitle}>{procedimientos.length} procedimientos registrados</div>
+          <div style={styles.title}>📚 {t('catalog.title')}</div>
+          <div style={styles.subtitle}>{t('catalog.count', { count: procedimientos.length })}</div>
         </div>
         <button onClick={() => openModal()} style={styles.addButton}>
-          + Nuevo
+          + {t('common.new')}
         </button>
       </div>
 
@@ -222,12 +227,12 @@ export default function CatalogoProcedimientosScreen() {
         {procedimientos.length === 0 ? (
           <div style={styles.emptyState}>
             <div style={styles.emptyIcon}>📋</div>
-            <div style={styles.emptyTitle}>Sin procedimientos</div>
+            <div style={styles.emptyTitle}>{t('catalog.empty')}</div>
             <div style={styles.emptyText}>
-              Agrega procedimientos a tu catálogo para usarlos en presupuestos
+              {t('catalog.emptyDesc')}
             </div>
             <button onClick={() => openModal()} style={styles.emptyButton}>
-              + Agregar Primer Procedimiento
+              + {t('catalog.addFirst')}
             </button>
           </div>
         ) : (
@@ -252,7 +257,7 @@ export default function CatalogoProcedimientosScreen() {
                   )}
                   
                   <div style={styles.cardPrice}>
-                    {config?.simbolo_moneda || 'Gs.'} {Number(proc.precio_base).toLocaleString()}
+                     {formatMoney(proc.precio_base)}
                   </div>
                   
                   <div style={styles.cardDuration}>
@@ -267,13 +272,13 @@ export default function CatalogoProcedimientosScreen() {
                         backgroundColor: proc.activo ? '#10b981' : '#6b7280'
                       }}
                     >
-                      {proc.activo ? '✓ Activo' : '✕ Inactivo'}
+                      {proc.activo ? `✓ ${t('common.active')}` : `✕ ${t('common.inactive')}`}
                     </button>
                     <button
                       onClick={() => openModal(proc)}
                       style={styles.actionButton}
                     >
-                      ✎ Editar
+                      ✎ {t('common.edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(proc.id)}
@@ -295,22 +300,22 @@ export default function CatalogoProcedimientosScreen() {
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div style={styles.modalTitle}>
-                {editingItem ? '✎ Editar Procedimiento' : '+ Nuevo Procedimiento'}
+                {editingItem ? `✎ ${t('catalog.editProcedure')}` : `+ ${t('catalog.newProcedure')}`}
               </div>
               <button onClick={closeModal} style={styles.modalClose}>✕</button>
             </div>
 
             <div style={styles.modalBody}>
-              <label style={styles.label}>Nombre del Procedimiento *</label>
+              <label style={styles.label}>{t('catalog.procedureName')} *</label>
               <input
                 type="text"
                 style={styles.input}
-                placeholder="Ej: Limpieza dental completa"
+                placeholder={t('catalog.namePlaceholder')}
                 value={formData.nombre_procedimiento}
                 onChange={(e) => updateFormField('nombre_procedimiento', e.target.value)}
               />
 
-              <label style={styles.label}>Categoría *</label>
+              <label style={styles.label}>{t('catalog.category')} *</label>
               <select
                 style={styles.select}
                 value={formData.categoria}
@@ -325,7 +330,7 @@ export default function CatalogoProcedimientosScreen() {
 
               <div style={styles.row}>
                 <div style={styles.field}>
-                  <label style={styles.label}>Precio Base *</label>
+                  <label style={styles.label}>{t('catalog.basePrice')} *</label>
                   <div style={styles.priceInput}>
                     <span style={styles.priceSymbol}>{config?.simbolo_moneda || 'Gs.'}</span>
                     <input
@@ -341,7 +346,7 @@ export default function CatalogoProcedimientosScreen() {
                 </div>
 
                 <div style={styles.field}>
-                  <label style={styles.label}>Duración (minutos)</label>
+                  <label style={styles.label}>{t('catalog.duration')}</label>
                   <input
                     type="number"
                     style={styles.input}
@@ -354,10 +359,10 @@ export default function CatalogoProcedimientosScreen() {
                 </div>
               </div>
 
-              <label style={styles.label}>Descripción (opcional)</label>
+              <label style={styles.label}>{t('common.description')} ({t('common.optional')})</label>
               <textarea
                 style={{...styles.input, ...styles.textArea}}
-                placeholder="Descripción detallada del procedimiento..."
+                placeholder={t('catalog.descPlaceholder')}
                 value={formData.descripcion}
                 onChange={(e) => updateFormField('descripcion', e.target.value)}
                 rows={3}
@@ -369,16 +374,16 @@ export default function CatalogoProcedimientosScreen() {
                   checked={formData.activo}
                   onChange={(e) => updateFormField('activo', e.target.checked)}
                 />
-                <span style={styles.checkboxText}>Activo (disponible para usar)</span>
+                <span style={styles.checkboxText}>{t('catalog.activeAvailable')}</span>
               </label>
             </div>
 
             <div style={styles.modalFooter}>
               <button onClick={closeModal} style={styles.cancelButton}>
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button onClick={handleSave} style={styles.saveButton}>
-                {editingItem ? '💾 Guardar Cambios' : '+ Agregar Procedimiento'}
+                {editingItem ? `💾 ${t('common.save')}` : `+ ${t('catalog.addProcedure')}`}
               </button>
             </div>
           </div>
@@ -387,7 +392,7 @@ export default function CatalogoProcedimientosScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

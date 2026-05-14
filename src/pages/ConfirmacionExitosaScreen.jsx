@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { supabase } from '../lib/supabase'
 import { procesarConfirmacionLink } from '../utils/confirmacionLinks'
 
 export default function ConfirmacionExitosaScreen() {
   const { token } = useParams()
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   
   const [loading, setLoading] = useState(true)
   const [resultado, setResultado] = useState(null)
@@ -23,8 +26,20 @@ export default function ConfirmacionExitosaScreen() {
     
     if (result.success) {
       setResultado(result)
+
+      if (result.datos_cita?.dentista_id) {
+        const { data: config } = await supabase
+          .from('configuracion_clinica')
+          .select('idioma')
+          .eq('dentista_id', result.datos_cita.dentista_id)
+          .maybeSingle()
+        
+        if (config?.idioma) {
+          i18n.changeLanguage(config.idioma)
+        }
+      }
     } else {
-      setError(result.message)
+      setError(t('errors.generic'))
     }
   } catch (error) {
     console.error('💥 CATCH Error al confirmar cita:', error) // 🆕 MEJORADO
@@ -39,7 +54,7 @@ export default function ConfirmacionExitosaScreen() {
       <div style={styles.container}>
         <div style={styles.loadingCard}>
           <div style={styles.loadingSpinner}>⏳</div>
-          <div style={styles.loadingText}>Procesando confirmación...</div>
+          <div style={styles.loadingText}>{t('confirm.processing')}</div>
         </div>
       </div>
     )
@@ -50,13 +65,13 @@ export default function ConfirmacionExitosaScreen() {
       <div style={styles.container}>
         <div style={styles.errorCard}>
           <div style={styles.errorIcon}>❌</div>
-          <div style={styles.errorTitle}>Error</div>
+          <div style={styles.errorTitle}>{t('common.error')}</div>
           <div style={styles.errorMessage}>{error}</div>
           <button 
             style={styles.button}
             onClick={() => navigate('/')}
           >
-            Ir al Inicio
+            {t('cancel.goHome')}
           </button>
         </div>
       </div>
@@ -67,35 +82,35 @@ export default function ConfirmacionExitosaScreen() {
     <div style={styles.container}>
       <div style={styles.successCard}>
         <div style={styles.successIcon}>✅</div>
-        <div style={styles.successTitle}>¡Cita Confirmada!</div>
+        <div style={styles.successTitle}>{t('confirm.title')}</div>
         <div style={styles.successMessage}>
-          Su cita ha sido confirmada exitosamente.
+          {t('confirm.message')}
         </div>
         
         {resultado?.datos_cita && (
           <div style={styles.citaInfo}>
-            <div style={styles.citaInfoTitle}>Detalles de su cita:</div>
+            <div style={styles.citaInfoTitle}>{t('confirm.appointmentDetails')}</div>
             <div style={styles.citaInfoItem}>
-              📅 <strong>Fecha:</strong> {new Date(resultado.datos_cita.fecha_cita).toLocaleDateString('es-ES')}
+              📅 <strong>{t('emailTemplates.reminderDate')}:</strong> {new Date(resultado.datos_cita.fecha_cita).toLocaleDateString(i18n.language)}
             </div>
             <div style={styles.citaInfoItem}>
-              🕐 <strong>Hora:</strong> {resultado.datos_cita.hora_inicio}
+              🕐 <strong>{t('emailTemplates.reminderTime')}:</strong> {resultado.datos_cita.hora_inicio}
             </div>
             <div style={styles.citaInfoItem}>
-              📋 <strong>Motivo:</strong> {resultado.datos_cita.motivo}
+              📋 <strong>{t('emailTemplates.reminderReason')}:</strong> {resultado.datos_cita.motivo}
             </div>
           </div>
         )}
 
         <div style={styles.thankYou}>
-          Gracias por confirmar su asistencia. Lo esperamos en el consultorio.
+          {t('confirm.thankYou')}
         </div>
 
         <button 
           style={styles.button}
           onClick={() => navigate('/')}
         >
-          Finalizar
+          {t('cancel.finish')}
         </button>
       </div>
     </div>

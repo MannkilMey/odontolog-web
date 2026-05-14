@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { supabase } from '../lib/supabase'
 import { procesarConfirmacionLink } from '../utils/confirmacionLinks'
 
 export default function CancelacionExitosaScreen() {
   const { token } = useParams()
   const navigate = useNavigate()
-  
+  const { t, i18n } = useTranslation()
+
   const [loading, setLoading] = useState(true)
   const [resultado, setResultado] = useState(null)
   const [error, setError] = useState(null)
@@ -22,12 +25,25 @@ export default function CancelacionExitosaScreen() {
       
       if (result.success) {
         setResultado(result)
+
+        // Detectar idioma de la clínica del Dr que envió la cita
+        if (result.datos_cita?.dentista_id) {
+          const { data: config } = await supabase
+            .from('configuracion_clinica')
+            .select('idioma')
+            .eq('dentista_id', result.datos_cita.dentista_id)
+            .maybeSingle()
+          
+          if (config?.idioma) {
+            i18n.changeLanguage(config.idioma)
+          }
+        }
       } else {
         setError(result.message)
       }
     } catch (error) {
-      console.error('Error al cancelar cita:', error)
-      setError('Error al procesar cancelación')
+      console.error('Error:', error)
+      setError(t('errors.generic'))
     } finally {
       setLoading(false)
     }
@@ -38,7 +54,7 @@ export default function CancelacionExitosaScreen() {
       <div style={styles.container}>
         <div style={styles.loadingCard}>
           <div style={styles.loadingSpinner}>⏳</div>
-          <div style={styles.loadingText}>Procesando cancelación...</div>
+          <div style={styles.loadingText}>{t('cancel.processing')}</div>
         </div>
       </div>
     )
@@ -49,13 +65,13 @@ export default function CancelacionExitosaScreen() {
       <div style={styles.container}>
         <div style={styles.errorCard}>
           <div style={styles.errorIcon}>❌</div>
-          <div style={styles.errorTitle}>Error</div>
+          <div style={styles.errorTitle}>{t('common.error')}</div>
           <div style={styles.errorMessage}>{error}</div>
           <button 
             style={styles.button}
             onClick={() => navigate('/')}
           >
-            Ir al Inicio
+            {t('cancel.goHome')}
           </button>
         </div>
       </div>
@@ -66,30 +82,30 @@ export default function CancelacionExitosaScreen() {
     <div style={styles.container}>
       <div style={styles.cancelCard}>
         <div style={styles.cancelIcon}>❌</div>
-        <div style={styles.cancelTitle}>Cita Cancelada</div>
+        <div style={styles.cancelTitle}>{t('cancel.title')}</div>
         <div style={styles.cancelMessage}>
-          Su cita ha sido cancelada correctamente.
+          {t('cancel.message')}
         </div>
         
         {resultado?.datos_cita && (
           <div style={styles.citaInfo}>
-            <div style={styles.citaInfoTitle}>Cita cancelada:</div>
+            <div style={styles.citaInfoTitle}>{t('cancel.cancelledAppointment')}</div>
             <div style={styles.citaInfoItem}>
-              📅 <strong>Fecha:</strong> {new Date(resultado.datos_cita.fecha_cita).toLocaleDateString('es-ES')}
+              📅 <strong>{t('emailTemplates.reminderDate')}:</strong> {new Date(resultado.datos_cita.fecha_cita).toLocaleDateString(i18n.language)}
             </div>
             <div style={styles.citaInfoItem}>
-              🕐 <strong>Hora:</strong> {resultado.datos_cita.hora_inicio}
+              🕐 <strong>{t('emailTemplates.reminderTime')}:</strong> {resultado.datos_cita.hora_inicio}
             </div>
             <div style={styles.citaInfoItem}>
-              📋 <strong>Motivo:</strong> {resultado.datos_cita.motivo}
+              📋 <strong>{t('emailTemplates.reminderReason')}:</strong> {resultado.datos_cita.motivo}
             </div>
           </div>
         )}
 
         <div style={styles.contactInfo}>
-          <div style={styles.contactTitle}>¿Necesita reprogramar?</div>
+          <div style={styles.contactTitle}>{t('cancel.needReschedule')}</div>
           <div style={styles.contactMessage}>
-            Si desea agendar una nueva cita, puede contactarnos por teléfono o WhatsApp.
+            {t('cancel.rescheduleMessage')}
           </div>
         </div>
 
@@ -97,7 +113,7 @@ export default function CancelacionExitosaScreen() {
           style={styles.button}
           onClick={() => navigate('/')}
         >
-          Finalizar
+          {t('cancel.finish')}
         </button>
       </div>
     </div>

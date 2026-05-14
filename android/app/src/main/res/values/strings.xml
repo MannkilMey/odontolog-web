@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Odontolog</string>
+    <string name="title_activity_main">Odontolog</string>
+    <string name="package_name">lat.odontolog.app</string>
+    <string name="custom_url_scheme">lat.odontolog.app</string>
+</resources>

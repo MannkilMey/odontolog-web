@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
 
 export default function ClientesScreen() {
+  const { t } = useTranslation()
   const [pacientes, setPacientes] = useState([])
   const [filteredPacientes, setFilteredPacientes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +44,7 @@ export default function ClientesScreen() {
 
       if (error) {
         console.error('Error fetching pacientes:', error)
-        alert('Error al cargar pacientes')
+        alert(t('errors.loadError', { item: t('patients.title') }))
       } else {
         setPacientes(data || [])
         setFilteredPacientes(data || [])
@@ -55,7 +57,7 @@ export default function ClientesScreen() {
   }
 
   const handleDelete = async (paciente) => {
-    if (!window.confirm(`¿Estás seguro de eliminar a ${paciente.nombre} ${paciente.apellido}? Esta acción no se puede deshacer.`)) {
+    if (!window.confirm(t('patients.confirmDelete'))) {
       return
     }
 
@@ -67,14 +69,14 @@ export default function ClientesScreen() {
 
       if (error) {
         console.error('Error deleting paciente:', error)
-        alert('Error al eliminar paciente')
+        alert(t('errors.deleteError', { item: t('patients.title') }))
       } else {
-        alert('Paciente eliminado correctamente')
+        alert(t('clients.patientDeleted'))
         getPacientes() // Recargar lista
       }
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al eliminar paciente')
+      alert(t('errors.deleteError', { item: t('patients.title') }))
     }
   }
 
@@ -107,7 +109,7 @@ export default function ClientesScreen() {
             {paciente.genero} • {calculateAge(paciente.fecha_nacimiento)} años
           </div>
           <div style={styles.pacienteContacto}>
-            {paciente.telefono || 'Sin teléfono'} {paciente.email && `• ${paciente.email}`}
+            {paciente.telefono || t('clients.noPhone')} {paciente.email && `• ${paciente.email}`}
           </div>
         </div>
       </div>
@@ -117,19 +119,19 @@ export default function ClientesScreen() {
           style={styles.actionButton}
           onClick={() => navigate(`/paciente/${paciente.id}`, { state: { paciente } })}
         >
-          👁️ Ver
+          👁️ {t('clients.view')}
         </button>
         <button
           style={styles.actionButtonEdit}
           onClick={() => navigate(`/editar-paciente/${paciente.id}`, { state: { paciente } })}
         >
-          ✏️ Editar
+          ✏️ {t('common.edit')}
         </button>
         <button
           style={styles.actionButtonDelete}
           onClick={() => handleDelete(paciente)}
         >
-          🗑️ Eliminar
+          🗑️ {t('common.delete')}
         </button>
       </div>
     </div>
@@ -139,19 +141,19 @@ export default function ClientesScreen() {
     <div style={styles.emptyState}>
       <div style={styles.emptyIcon}>🔍</div>
       <div style={styles.emptyTitle}>
-        {searchTerm ? 'No se encontraron pacientes' : 'No hay pacientes registrados'}
+        {searchTerm ? t('clients.noResults') : t('patients.noPatients')}
       </div>
       <div style={styles.emptySubtitle}>
         {searchTerm 
-          ? 'Intenta con otro término de búsqueda' 
-          : 'Agrega tu primer paciente para comenzar'}
+          ? t('clients.tryAnother') 
+          : t('clients.addFirstDesc')}
       </div>
       {!searchTerm && (
         <button 
           style={styles.emptyButton}
           onClick={() => navigate('/agregar-paciente')}
         >
-          + Agregar Paciente
+          + {t('patients.addPatient')}
         </button>
       )}
     </div>
@@ -165,19 +167,19 @@ export default function ClientesScreen() {
           onClick={() => navigate('/dashboard')}
           style={styles.backButton}
         >
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>Gestión de Pacientes</div>
+          <div style={styles.title}>{t('dashboard.managePatients')}</div>
           <div style={styles.subtitle}>
-            {filteredPacientes.length} paciente{filteredPacientes.length !== 1 ? 's' : ''}
+            {t('patients.totalCount', { count: filteredPacientes.length })}
           </div>
         </div>
         <button 
           onClick={() => navigate('/agregar-paciente')}
           style={styles.addButton}
         >
-          + Nuevo
+          + {t('common.new')}
         </button>
       </div>
 
@@ -186,7 +188,7 @@ export default function ClientesScreen() {
         <input
           type="text"
           style={styles.searchInput}
-          placeholder="Buscar por nombre, teléfono o email..."
+          placeholder={t('patients.searchPlaceholder')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -204,7 +206,7 @@ export default function ClientesScreen() {
       <div style={styles.content}>
         {loading ? (
           <div style={styles.loadingContainer}>
-            <div style={styles.loadingText}>Cargando pacientes...</div>
+            <div style={styles.loadingText}>{t('common.loading')}</div>
           </div>
         ) : filteredPacientes.length === 0 ? (
           <EmptyState />
@@ -219,7 +221,7 @@ export default function ClientesScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

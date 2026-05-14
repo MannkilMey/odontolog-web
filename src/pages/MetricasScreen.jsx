@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useMoneda } from '../hooks/useMoneda'
+import { useTranslation } from 'react-i18next'
 
 export default function MetricasScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('mes_actual')
   const [estadisticas, setEstadisticas] = useState({
@@ -107,7 +111,7 @@ export default function MetricasScreen() {
 
     } catch (error) {
       console.error('Error loading métricas:', error)
-      alert('No se pudieron cargar las métricas')
+      alert(t('errors.loadError', { item: t('metricas.title') }))
     } finally {
       setLoading(false)
     }
@@ -281,7 +285,7 @@ export default function MetricasScreen() {
 
     const metodos = {}
     data.forEach(ing => {
-      const metodo = ing.metodo_pago || 'sin_especificar'
+      const metodo = ing.metodo_pago || t('metricas.unspecified')
       if (!metodos[metodo]) {
         metodos[metodo] = 0
       }
@@ -312,9 +316,6 @@ export default function MetricasScreen() {
     return estados
   }
 
-  const formatMoney = (value) => {
-    return `Gs. ${Number(value).toLocaleString('es-PY')}`
-  }
 
   const calculateChange = (actual, anterior) => {
     if (anterior === 0) return actual > 0 ? 100 : 0
@@ -351,7 +352,7 @@ export default function MetricasScreen() {
             }}>
               {isPositive ? '↑' : '↓'} {Math.abs(change)}%
             </span>
-            <span style={styles.comparativaAnterior}>vs {anterior} anterior</span>
+            <span style={styles.comparativaAnterior}>{t('metricas.vsPrevious', { anterior })}</span>
           </div>
         </div>
       </div>
@@ -380,19 +381,19 @@ export default function MetricasScreen() {
     )
   }
 
-  const getPeriodLabel = () => {
-    switch(selectedPeriod) {
-      case 'mes_actual': return 'Mes Actual'
-      case 'trimestre': return 'Trimestre'
-      case 'año': return 'Año'
-      default: return 'Mes Actual'
-    }
+ const getPeriodLabel = () => {
+  switch(selectedPeriod) {
+    case 'mes_actual': return t('metricas.periodMonthLabel')
+    case 'trimestre': return t('metricas.periodQuarterLabel')
+    case 'año': return t('metricas.periodYearLabel')
+    default: return t('metricas.periodMonthLabel')
+  }
   }
 
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.loadingText}>Cargando métricas...</div>
+        <div style={styles.loadingText}>{t('metricas.loading')}</div>
       </div>
     )
   }
@@ -402,10 +403,10 @@ export default function MetricasScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📊 Métricas y Análisis</div>
+          <div style={styles.title}>{t('metricas.title')}</div>
           <div style={styles.subtitle}>{getPeriodLabel()}</div>
         </div>
         <button onClick={loadMetricas} style={styles.refreshButton}>
@@ -422,7 +423,7 @@ export default function MetricasScreen() {
           }}
           onClick={() => setSelectedPeriod('mes_actual')}
         >
-          Mes
+          {t('metricas.periodMonth')}
         </button>
         <button
           style={{
@@ -431,7 +432,7 @@ export default function MetricasScreen() {
           }}
           onClick={() => setSelectedPeriod('trimestre')}
         >
-          Trimestre
+          {t('metricas.periodQuarter')}
         </button>
         <button
           style={{
@@ -440,35 +441,35 @@ export default function MetricasScreen() {
           }}
           onClick={() => setSelectedPeriod('año')}
         >
-          Año
+          {t('metricas.periodYear')}
         </button>
       </div>
 
       <div style={styles.content}>
         {/* Resumen Financiero */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>💰 Resumen Financiero</div>
+          <div style={styles.sectionTitle}>{t('metricas.financialSummary')}</div>
           <div style={styles.statsGrid}>
             <StatCard
-              title="Total Ingresos"
+              title={t('metricas.totalIncome')}
               value={formatMoney(estadisticas.financiero.totalIngresos)}
               icon="💵"
               color="#10b981"
             />
             <StatCard
-              title="Total Gastos"
+              title={t('metricas.totalExpenses')}
               value={formatMoney(estadisticas.financiero.totalGastos)}
               icon="💸"
               color="#ef4444"
             />
             <StatCard
-              title="Utilidad Neta"
+              title={t('metricas.netProfit')}
               value={formatMoney(estadisticas.financiero.utilidad)}
               icon="📈"
               color={estadisticas.financiero.utilidad >= 0 ? '#10b981' : '#ef4444'}
             />
             <StatCard
-              title="Ticket Promedio"
+              title={t('metricas.avgTicket')}
               value={formatMoney(estadisticas.financiero.ticketPromedio)}
               icon="🎫"
               color="#3b82f6"
@@ -478,27 +479,27 @@ export default function MetricasScreen() {
 
         {/* Resumen General */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>📋 Resumen General</div>
+          <div style={styles.sectionTitle}>{t('metricas.generalSummary')}</div>
           <div style={styles.statsGrid}>
             <StatCard
-              title="Total Pacientes"
+              title={t('metricas.totalPatients')}
               value={estadisticas.resumenGeneral.totalPacientes}
               icon="👥"
             />
             <StatCard
-              title="Citas Completadas"
+              title={t('metricas.completedAppointments')}
               value={estadisticas.resumenGeneral.citasCompletadas}
               icon="✅"
               color="#10b981"
             />
             <StatCard
-              title="Procedimientos"
+              title={t('metricas.procedures')}
               value={estadisticas.resumenGeneral.procedimientosRealizados}
               icon="🦷"
               color="#3b82f6"
             />
             <StatCard
-              title="Citas Canceladas"
+              title={t('metricas.cancelledAppointments')}
               value={estadisticas.resumenGeneral.citasCanceladas}
               icon="❌"
               color="#ef4444"
@@ -508,22 +509,22 @@ export default function MetricasScreen() {
 
         {/* Comparativa con Período Anterior */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>📊 Comparativa</div>
+          <div style={styles.sectionTitle}>{t('metricas.comparative')}</div>
           <div style={styles.comparativaGrid}>
             <ComparativaCard
-              title="Pacientes Nuevos"
+              title={t('metricas.newPatients')}
               actual={estadisticas.comparativa.pacientesNuevos.actual}
               anterior={estadisticas.comparativa.pacientesNuevos.anterior}
               icon="👥"
             />
             <ComparativaCard
-              title="Ingresos"
+              title={t('metricas.income')}
               actual={formatMoney(estadisticas.comparativa.ingresos.actual)}
               anterior={formatMoney(estadisticas.comparativa.ingresos.anterior)}
               icon="💰"
             />
             <ComparativaCard
-              title="Citas Completadas"
+              title={t('metricas.completedAppointments')}
               actual={estadisticas.comparativa.citas.actual}
               anterior={estadisticas.comparativa.citas.anterior}
               icon="📅"
@@ -534,7 +535,7 @@ export default function MetricasScreen() {
         {/* Top Procedimientos */}
         {estadisticas.topProcedimientos.length > 0 && (
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>🏆 Top Procedimientos</div>
+            <div style={styles.sectionTitle}>{t('metricas.topProcedures')}  </div>
             <div style={styles.chartContainer}>
               {estadisticas.topProcedimientos.map((proc, index) => (
                 <ChartBar
@@ -552,7 +553,7 @@ export default function MetricasScreen() {
         {/* Métodos de Pago */}
         {estadisticas.metodosPago.length > 0 && (
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>💳 Métodos de Pago</div>
+            <div style={styles.sectionTitle}>{t('metricas.paymentMethods')}</div>
             <div style={styles.chartContainer}>
               {estadisticas.metodosPago.map((metodo, index) => (
                 <ChartBar
@@ -570,7 +571,7 @@ export default function MetricasScreen() {
         {/* Estados de Citas */}
         {Object.keys(estadisticas.citasPorEstado).length > 0 && (
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>📅 Estados de Citas</div>
+            <div style={styles.sectionTitle}>{t('metricas.appointmentStatuses')}</div>
             <div style={styles.statsGrid}>
               {Object.entries(estadisticas.citasPorEstado).map(([estado, cantidad]) => {
                 const estadosConfig = {
@@ -585,7 +586,7 @@ export default function MetricasScreen() {
                 return (
                   <StatCard
                     key={estado}
-                    title={estado.charAt(0).toUpperCase() + estado.slice(1)}
+                    title={t(`appointments.statuses.${estado}`, { defaultValue: estado.charAt(0).toUpperCase() + estado.slice(1) })}
                     value={cantidad}
                     icon={config.icon}
                     color={config.color}
@@ -600,9 +601,9 @@ export default function MetricasScreen() {
       {/* Footer */}
       <div style={styles.footer}>
         <div style={styles.footerText}>
-          Métricas actualizadas: {new Date().toLocaleString('es-ES')}
+          {t('metricas.updatedAt', { date: new Date().toLocaleString(i18n.language) })}
         </div>
-        <div style={styles.footerBrand}>Diseñado por MCorp</div>
+        <div style={styles.footerBrand}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

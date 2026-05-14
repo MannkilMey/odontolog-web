@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
 
 export default function EditPacienteScreen() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -54,7 +56,7 @@ export default function EditPacienteScreen() {
 
       if (error) {
         console.error('Error loading paciente:', error)
-        alert('Error al cargar paciente')
+        alert(t('errors.loadError', { item: t('patients.title') }))
         navigate('/clientes')
       } else {
         loadPacienteFromState(data)
@@ -109,21 +111,21 @@ export default function EditPacienteScreen() {
 
   const validateForm = () => {
     if (!formData.nombre.trim()) {
-      alert('El nombre es requerido')
+      alert(t('errors.requiredField', { field: t('patients.firstName') }))
       return false
     }
     if (!formData.apellido.trim()) {
-      alert('El apellido es requerido')
+      alert(t('errors.requiredField', { field: t('patients.lastName') }))
       return false
     }
     if (formData.email && !formData.email.includes('@')) {
-      alert('El email debe tener un formato válido')
+      alert(t('errors.invalidEmail'))
       return false
     }
     
     // Validar formato de fecha si se proporciona
     if (formData.fecha_nacimiento && !isValidDate(formData.fecha_nacimiento)) {
-      alert('La fecha debe tener el formato DD/MM/AAAA')
+      alert(t('errors.invalidDate'))
       return false
     }
     
@@ -200,12 +202,12 @@ export default function EditPacienteScreen() {
         
         // Mostrar mensaje de éxito
         setTimeout(() => {
-          alert('¡Paciente actualizado correctamente!')
+          alert(t('patients.patientUpdated'))
         }, 500)
       }
     } catch (error) {
       console.error('🔴 Error general:', error)
-      alert('Algo salió mal. Intenta de nuevo.')
+      alert(t('errors.generic'))
     } finally {
       setLoading(false)
     }
@@ -213,7 +215,7 @@ export default function EditPacienteScreen() {
 
   const handleCancel = () => {
     
-    if (window.confirm('¿Estás seguro? Se perderán los cambios no guardados.')) {
+    if (window.confirm(t('patients.unsavedChanges'))) {
       navigate('/clientes')
     }
   }
@@ -239,7 +241,7 @@ export default function EditPacienteScreen() {
   if (loadingData) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.loadingText}>Cargando datos del paciente...</div>
+        <div style={styles.loadingText}>{t('common.loading')}</div>
       </div>
     )
   }
@@ -252,105 +254,105 @@ export default function EditPacienteScreen() {
           onClick={handleCancel}
           style={styles.cancelButton}
         >
-          Cancelar
+          {t('common.cancel')}
         </button>
-        <div style={styles.headerTitle}>Editar Paciente</div>
+        <div style={styles.headerTitle}>{t('patients.editPatient')}</div>
         <button 
           onClick={handleSave}
           style={{...styles.saveButton, ...(loading && styles.saveButtonDisabled)}}
           disabled={loading}
         >
-          {loading ? 'Guardando...' : 'Guardar'}
+           {loading ? t('common.saving') : t('common.save')}
         </button>
       </div>
 
       <div style={styles.form}>
         {/* Información Personal */}
-        <div style={styles.sectionTitle}>Información Personal</div>
+        <div style={styles.sectionTitle}>{t('patients.personalInfo')}</div>
         
         <div style={styles.row}>
           <div style={styles.halfWidth}>
-            <label style={styles.label}>Nombre *</label>
+            <label style={styles.label}>{t('patients.firstName')} *</label>
             <input
               type="text"
               style={styles.input}
               value={formData.nombre}
               onChange={(e) => updateField('nombre', e.target.value)}
-              placeholder="Ej: Juan"
+              placeholder={t('patients.firstNamePlaceholder')}
             />
           </div>
           
           <div style={styles.halfWidth}>
-            <label style={styles.label}>Apellido *</label>
+            <label style={styles.label}>{t('patients.lastName')} *</label>
             <input
               type="text"
               style={styles.input}
               value={formData.apellido}
               onChange={(e) => updateField('apellido', e.target.value)}
-              placeholder="Ej: Pérez"
+              placeholder={t('patients.lastNamePlaceholder')}
             />
           </div>
         </div>
 
-        <label style={styles.label}>Género</label>
+        <label style={styles.label}>{t('patients.gender')}</label>
         <div style={styles.genderContainer}>
-          <GenderButton gender="masculino" label="Masculino" />
-          <GenderButton gender="femenino" label="Femenino" />
-          <GenderButton gender="otro" label="Otro" />
+          <GenderButton gender="masculino" label={t('patients.male')} />
+          <GenderButton gender="femenino" label={t('patients.female')} />
+          <GenderButton gender="otro" label={t('patients.other')} />
         </div>
 
-        <label style={styles.label}>Fecha de Nacimiento</label>
+        <label style={styles.label}>{t('patients.birthDate')}</label>
         <input
           type="text"
           style={styles.input}
           value={formData.fecha_nacimiento}
           onChange={(e) => updateField('fecha_nacimiento', e.target.value)}
-          placeholder="DD/MM/AAAA (ej: 17/05/1995)"
+          placeholder={t('patients.birthDatePlaceholder')}
           maxLength={10}
         />
         {formData.fecha_nacimiento && !isValidDate(formData.fecha_nacimiento) && (
-          <div style={styles.errorText}>Formato incorrecto. Use DD/MM/AAAA</div>
+          <div style={styles.errorText}>{t('patients.birthDateError')}</div>
         )}
 
         {/* Información de Contacto */}
-        <div style={styles.sectionTitle}>Información de Contacto</div>
+        <div style={styles.sectionTitle}>{t('patients.contactInfo')}</div>
 
-        <label style={styles.label}>Teléfono</label>
+        <label style={styles.label}>{t('common.phone')}</label>
         <input
           type="tel"
           style={styles.input}
           value={formData.telefono}
           onChange={(e) => updateField('telefono', e.target.value)}
-          placeholder="Ej: +595 21 123456"
+          placeholder={t('patients.phonePlaceholder')}
         />
 
-        <label style={styles.label}>Email</label>
+        <label style={styles.label}>{t('common.email')}</label>
         <input
           type="email"
           style={styles.input}
           value={formData.email}
           onChange={(e) => updateField('email', e.target.value)}
-          placeholder="Ej: juan.perez@email.com"
+          placeholder={t('patients.emailPlaceholder')}
         />
 
-        <label style={styles.label}>Dirección</label>
+        <label style={styles.label}>{t('common.address')}</label>
         <textarea
           style={{...styles.input, ...styles.textArea}}
           value={formData.direccion}
           onChange={(e) => updateField('direccion', e.target.value)}
-          placeholder="Ej: Av. España 123, Ciudad del Este"
+          placeholder={t('patients.addressPlaceholder')}
           rows={3}
         />
 
         {/* Notas Adicionales */}
-        <div style={styles.sectionTitle}>Notas Adicionales</div>
+        <div style={styles.sectionTitle}>{t('patients.additionalNotes')}</div>
 
-        <label style={styles.label}>Observaciones</label>
+        <label style={styles.label}>{t('patients.observations')}</label>
         <textarea
           style={{...styles.input, ...styles.textArea}}
           value={formData.notas_generales}
           onChange={(e) => updateField('notas_generales', e.target.value)}
-          placeholder="Notas médicas, alergias, observaciones especiales..."
+          placeholder={t('patients.observationsPlaceholder')}
           rows={4}
         />
 
@@ -358,7 +360,7 @@ export default function EditPacienteScreen() {
       </div>
 
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

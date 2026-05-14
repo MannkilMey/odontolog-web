@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
+
 
 export default function CuentasPorCobrarScreen() {
   const navigate = useNavigate()
+  const { formatMoney } = useMoneda()
+  const { t, i18n } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [config, setConfig] = useState(null)
   const [cuentas, setCuentas] = useState([])
@@ -95,19 +100,16 @@ export default function CuentasPorCobrarScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar datos')
+      alert(t('errors.loadError', { item: t('cuentas.title') }))
     } finally {
       setLoading(false)
     }
   }
 
-  const formatMoney = (value) => {
-    return `${config?.simbolo_moneda || 'Gs.'} ${Number(value).toLocaleString('es-PY')}`
-  }
-
+ 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Sin actividad'
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    if (!dateString) return t('cuentas.noActivity')
+    return new Date(dateString).toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -121,9 +123,9 @@ export default function CuentasPorCobrarScreen() {
   }
 
   const getSaldoTexto = (saldo) => {
-    if (saldo > 0) return 'Debe'
-    if (saldo < 0) return 'A favor'
-    return 'Al día'
+    if (saldo > 0) return t('cuentas.owes')
+    if (saldo < 0) return t('cuentas.inFavor')
+    return t('cuentas.upToDate')
   }
 
   // Filtrar cuentas
@@ -155,7 +157,7 @@ export default function CuentasPorCobrarScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando cuentas...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -165,11 +167,11 @@ export default function CuentasPorCobrarScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>💳 Cuentas por Cobrar</div>
-          <div style={styles.subtitle}>{cuentas.length} pacientes</div>
+          <div style={styles.title}>💳 {t('cuentas.title')}</div>
+          <div style={styles.subtitle}>{t('patients.totalCount', { count: cuentas.length })}</div>
         </div>
         <button onClick={loadData} style={styles.refreshButton}>
           ⟳
@@ -181,35 +183,35 @@ export default function CuentasPorCobrarScreen() {
         <div style={styles.statsContainer}>
           <div style={styles.statCard}>
             <div style={styles.statNumber}>{stats.totalCuentas}</div>
-            <div style={styles.statLabel}>Total Pacientes</div>
+            <div style={styles.statLabel}>{t('dashboard.totalPatients')}</div>
           </div>
           <div style={{...styles.statCard, ...styles.statCardDanger}}>
             <div style={styles.statNumber}>{stats.conDeuda}</div>
-            <div style={styles.statLabel}>Con Deuda</div>
+            <div style={styles.statLabel}>{t('cuentas.withDebt')}</div>
           </div>
           <div style={{...styles.statCard, ...styles.statCardSuccess}}>
             <div style={styles.statNumber}>{stats.alDia}</div>
-            <div style={styles.statLabel}>Al Día</div>
+            <div style={styles.statLabel}>{t('cuentas.upToDate')}</div>
           </div>
           <div style={{...styles.statCard, ...styles.statCardWarning}}>
             <div style={styles.statNumber}>{formatMoney(stats.totalAdeudado)}</div>
-            <div style={styles.statLabel}>Total Adeudado</div>
+            <div style={styles.statLabel}>{t('cuentas.totalOwed')}</div>
           </div>
         </div>
 
         {/* Resumen Financiero */}
         <div style={styles.summaryCard}>
-          <div style={styles.summaryTitle}>📊 Resumen Financiero</div>
+          <div style={styles.summaryTitle}>📊 {t('cuentas.financialSummary')}</div>
           <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>Total Presupuestos Aprobados:</span>
+            <span style={styles.summaryLabel}>{t('cuentas.approvedBudgets')}:</span>
             <span style={styles.summaryValue}>{formatMoney(stats.totalPresupuestos)}</span>
           </div>
           <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>Total Cobrado:</span>
+            <span style={styles.summaryLabel}>{t('cuentas.totalCollected')}:</span>
             <span style={{...styles.summaryValue, color: '#10b981'}}>{formatMoney(stats.totalCobrado)}</span>
           </div>
           <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>Tasa de Cobranza:</span>
+            <span style={styles.summaryLabel}>{t('cuentas.collectionRate')}:</span>
             <span style={styles.summaryValue}>
               {stats.totalPresupuestos > 0 
                 ? `${Math.round((stats.totalCobrado / stats.totalPresupuestos) * 100)}%`
@@ -229,7 +231,7 @@ export default function CuentasPorCobrarScreen() {
               }}
               onClick={() => setFiltro('todos')}
             >
-              Todos ({cuentas.length})
+              {t('common.all')} ({cuentas.length})
             </button>
             <button
               style={{
@@ -238,7 +240,7 @@ export default function CuentasPorCobrarScreen() {
               }}
               onClick={() => setFiltro('con_deuda')}
             >
-              Con Deuda ({stats.conDeuda})
+              {t('cuentas.withDebt')} ({stats.conDeuda})
             </button>
             <button
               style={{
@@ -247,14 +249,14 @@ export default function CuentasPorCobrarScreen() {
               }}
               onClick={() => setFiltro('al_dia')}
             >
-              Al Día ({stats.alDia})
+              {t('cuentas.upToDate')} ({stats.alDia})
             </button>
           </div>
 
           <input
             type="text"
             style={styles.searchInput}
-            placeholder="🔍 Buscar paciente..."
+            placeholder={`🔍 ${t('cuentas.searchPatient')}`}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
@@ -266,8 +268,8 @@ export default function CuentasPorCobrarScreen() {
             <div style={styles.emptyIcon}>💳</div>
             <div style={styles.emptyText}>
               {busqueda 
-                ? 'No se encontraron pacientes con ese nombre'
-                : 'No hay pacientes en esta categoría'
+                ? t('clients.noResults')
+                : t('cuentas.noPatients')
               }
             </div>
           </div>
@@ -288,7 +290,7 @@ export default function CuentasPorCobrarScreen() {
                       {cuenta.nombre} {cuenta.apellido}
                     </div>
                     <div style={styles.cuentaActividad}>
-                      Última actividad: {formatDate(cuenta.ultimaActividad)}
+                      {t('cuentas.lastActivity')}: {formatDate(cuenta.ultimaActividad)}
                     </div>
                   </div>
                   <div style={{
@@ -301,25 +303,25 @@ export default function CuentasPorCobrarScreen() {
 
                 <div style={styles.cuentaDetails}>
                   <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>Presupuestos:</span>
+                    <span style={styles.detailLabel}>{t('billing.budgets')}:</span>
                     <span style={styles.detailValue}>
                       {cuenta.cantidadPresupuestos} • {formatMoney(cuenta.totalPresupuestos)}
                     </span>
                   </div>
                   <div style={styles.detailRow}>
-                    <span style={styles.detailLabel}>Pagos:</span>
+                    <span style={styles.detailLabel}>{t('billing.payments')}:</span>
                     <span style={styles.detailValue}>
                       {cuenta.cantidadPagos} • {formatMoney(cuenta.totalPagos)}
                     </span>
                   </div>
                   <div style={{...styles.detailRow, ...styles.detailRowTotal}}>
-                    <span style={styles.detailLabelBold}>Saldo:</span>
+                    <span style={styles.detailLabelBold}>{t('cuentas.balance')}:</span>
                     <span style={{
                       ...styles.detailValueBold,
                       color: getSaldoColor(cuenta.saldo)
                     }}>
                       {formatMoney(Math.abs(cuenta.saldo))}
-                      {cuenta.saldo < 0 && ' (a favor del paciente)'}
+                      {cuenta.saldo < 0 && ` (${t('cuentas.patientFavor')})`}
                     </span>
                   </div>
                 </div>
@@ -332,7 +334,7 @@ export default function CuentasPorCobrarScreen() {
                       navigate(`/paciente/${cuenta.id}`)
                     }}
                   >
-                    Ver Detalle →
+                    {t('common.details')} →
                   </button>
                 </div>
               </div>
@@ -343,7 +345,7 @@ export default function CuentasPorCobrarScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

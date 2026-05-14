@@ -2,10 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 
-// ✅ AGREGAR CONTEXT API
 import { SuscripcionProvider } from './hooks/SuscripcionContext'
 
-// ==================== PÁGINAS PRINCIPALES ====================
 import LandingPage from './pages/LandingPage'
 import LoginScreen from './pages/LoginScreen'
 import RegistrationScreen from './pages/RegistrationScreen'
@@ -28,8 +26,6 @@ import CalendarioScreen from './pages/CalendarioScreen'
 import CrearCitaScreen from './pages/CrearCitaScreen'
 import CitaDetailScreen from './pages/CitaDetailScreen'
 import GastosScreen from './pages/GastosScreen'
-
-// 🔐 PANTALLAS PREMIUM
 import HistorialProcedimientosScreen from './pages/HistorialProcedimientosScreen'
 import HistorialFinancieroScreen from './pages/HistorialFinancieroScreen'
 import TimelineUnificadoScreen from './pages/TimelineUnificadoScreen'
@@ -41,8 +37,6 @@ import ExportarDatosScreen from './pages/ExportarDatosScreen'
 import GestionEquipoScreen from './pages/GestionEquipoScreen'
 import DashboardEquipoScreen from './pages/DashboardEquipoScreen'
 import MetricasPerfilScreen from './pages/MetricasPerfilScreen'
-
-// ⚙️ PÁGINAS ADICIONALES
 import PlanesScreen from './pages/PlanesScreen'
 import HistorialPagosScreen from './pages/HistorialPagosScreen'
 import AdminDashboard from './pages/AdminDashboard'
@@ -53,69 +47,80 @@ import TerminosPage from './pages/TerminosPage'
 import ForgotPasswordScreen from './pages/ForgotPasswordScreen'
 import ResetPasswordScreen from './pages/ResetPasswordScreen'
 import PlanesPagoScreen from './pages/PlanesPagoScreen'
-
-
-// 🆕 SISTEMA DE CONFIRMACIÓN
 import ConfirmacionExitosaScreen from './pages/ConfirmacionExitosaScreen'
 import CancelacionExitosaScreen from './pages/CancelacionExitosaScreen'
-
-// 🎯 LOADING SIMPLE
 import LoadingScreen from './pages/LoadingScreen'
 
-// ✅ COMPONENTE SIMPLE PARA RUTAS PROTEGIDAS
 function ProtectedRoute({ children, session }) {
-  if (!session) {
-    return <Navigate to="/login" replace />
-  }
+  if (!session) return <Navigate to="/login" replace />
   return children
 }
 
 function App() {
-   
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-   
+
   const navigate = useNavigate()
   const location = useLocation()
 
-  // ✅ REF para prevenir procesamiento duplicado
-  const currentUserIdRef = useRef(null)
+  const currentUserIdRef      = useRef(null)
+  const locationRef           = useRef(location.pathname)   // ✅ NUEVO
+  const isPasswordRecoveryRef = useRef(false)               // ✅ NUEVO
 
-  // ═══════════════════════════════════════════════════════════
-  // FIX C: AUTH UNIFICADO - SOLO onAuthStateChange
-  // 
-  // ANTES: getSession() + onAuthStateChange corrían en paralelo
-  //        causando 2 setSession → 2 renders → 2 montajes del Provider
-  //
-  // AHORA: Solo usamos onAuthStateChange que dispara INITIAL_SESSION
-  //        como primer evento, eliminando la race condition
-  // ═══════════════════════════════════════════════════════════
+  // ✅ Mantener locationRef siempre actualizado
+  useEffect(() => {
+    locationRef.current = location.pathname
+  }, [location.pathname])
+
   useEffect(() => {
     let mounted = true
+
+    const loadClinicConfig = (userId) => {
+      supabase
+        .from('configuracion_clinica')
+        .select('idioma, moneda')
+        .eq('dentista_id', userId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.idioma) {
+            localStorage.setItem('odontolog_idioma', data.idioma)
+            import('i18next').then(m => m.default.changeLanguage(data.idioma))
+          }
+          if (data?.moneda) {
+            localStorage.setItem('odontolog_moneda', data.moneda)
+          }
+        })
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return
 
-      const newUserId = newSession?.user?.id || null
+      const newUserId     = newSession?.user?.id || null
       const currentUserId = currentUserIdRef.current
-
 
       switch (event) {
         case 'INITIAL_SESSION':
-          // ✅ Este es el ÚNICO lugar donde procesamos la sesión inicial
           currentUserIdRef.current = newUserId
           setSession(newSession)
+          if (newUserId) loadClinicConfig(newUserId)
           setLoading(false)
           break
 
         case 'SIGNED_IN':
-          // ✅ Solo actualizar si el userId realmente cambió
+          // ✅ Si venimos de recovery, no redirigir — solo setear sesión
+          if (isPasswordRecoveryRef.current) {
+            currentUserIdRef.current = newUserId
+            setSession(newSession)
+            break
+          }
+
           if (newUserId !== currentUserId) {
             currentUserIdRef.current = newUserId
             setSession(newSession)
-            
-            // Redirigir solo si estamos en login
-            if (location.pathname === '/login' && newSession) {
+            loadClinicConfig(newUserId)
+
+            // ✅ locationRef.current siempre tiene el pathname actual
+            if (locationRef.current === '/login' && newSession) {
               if (newSession.user.email === 'president@odontolog.lat') {
                 navigate('/admin', { replace: true })
               } else {
@@ -132,22 +137,30 @@ function App() {
           break
 
         case 'TOKEN_REFRESHED':
-          // ✅ Solo actualizar la referencia de sesión, NO disparar re-render
-          //    si el userId no cambió (que nunca debería en un refresh)
           if (newUserId !== currentUserId) {
             currentUserIdRef.current = newUserId
             setSession(newSession)
           }
-          // Si solo cambió el token, actualizar ref silenciosamente
-          // para que los queries usen el token nuevo
           break
 
         case 'PASSWORD_RECOVERY':
+          // ✅ Marcar flujo de recovery + setear sesión + navegar
+          isPasswordRecoveryRef.current = true
+          currentUserIdRef.current = newUserId
+          setSession(newSession)
           navigate('/reset-password')
           break
 
+        case 'USER_UPDATED':
+          // ✅ Limpiar flag al completar el cambio de contraseña
+          isPasswordRecoveryRef.current = false
+          if (newUserId !== currentUserId) {
+            currentUserIdRef.current = newUserId
+            setSession(newSession)
+          }
+          break
+
         default:
-          // USER_UPDATED, etc.
           if (newUserId !== currentUserId) {
             currentUserIdRef.current = newUserId
             setSession(newSession)
@@ -159,12 +172,11 @@ function App() {
       mounted = false
       subscription.unsubscribe()
     }
-  }, []) // ✅ Sin dependencias - se ejecuta UNA sola vez
+  }, [])
 
-  // ✅ REDIRECT AUTOMÁTICO (sin cambios funcionales)
   useEffect(() => {
     if (loading || !session) return
-     
+
     if (session.user?.email === 'president@odontolog.lat') {
       if (location.pathname !== '/admin') {
         navigate('/admin', { replace: true })
@@ -177,28 +189,13 @@ function App() {
     }
   }, [session?.user?.id, location.pathname, navigate, loading])
 
-  // ⏳ LOADING
-  if (loading) {
-    return <LoadingScreen />
-  }
+  if (loading) return <LoadingScreen />
 
-  // ═══════════════════════════════════════════════════════════
-  // FIX D: PROVIDER SIEMPRE MONTADO
-  //
-  // ANTES: {memoizedSession ? <Provider>...</Provider> : <Routes/>}
-  //        Cada cambio de sesión DESMONTABA y REMONTABA el Provider,
-  //        destruyendo todo el estado interno (cache, subscriptions)
-  //
-  // AHORA: Provider siempre está en el árbol. Recibe userId que puede
-  //        ser null. Internamente maneja el caso sin sesión.
-  //        Las rutas públicas funcionan igual, solo sin datos de suscripción.
-  // ═══════════════════════════════════════════════════════════
   const userId = session?.user?.id || null
 
   return (
     <SuscripcionProvider userId={userId}>
       <Routes>
-        {/* ==================== RUTAS PÚBLICAS ==================== */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/privacidad" element={<PrivacidadPage />} />
         <Route path="/terminos" element={<TerminosPage />} />
@@ -211,16 +208,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
         <Route path="/reset-password" element={<ResetPasswordScreen />} />
 
-        {/* ==================== RUTAS PROTEGIDAS ==================== */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute session={session}>
-              <DashboardScreen session={session} />
-            </ProtectedRoute>
-          } 
-        />
-
+        <Route path="/dashboard" element={<ProtectedRoute session={session}><DashboardScreen session={session} /></ProtectedRoute>} />
         <Route path="/clientes" element={<ProtectedRoute session={session}><ClientesScreen /></ProtectedRoute>} />
         <Route path="/agregar-paciente" element={<ProtectedRoute session={session}><AddPacienteScreen /></ProtectedRoute>} />
         <Route path="/editar-paciente/:id" element={<ProtectedRoute session={session}><EditPacienteScreen /></ProtectedRoute>} />
@@ -240,8 +228,6 @@ function App() {
         <Route path="/configuracion" element={<ProtectedRoute session={session}><ConfiguracionClinicaScreen /></ProtectedRoute>} />
         <Route path="/planes" element={<ProtectedRoute session={session}><PlanesScreen /></ProtectedRoute>} />
         <Route path="/historial-pagos" element={<ProtectedRoute session={session}><HistorialPagosScreen /></ProtectedRoute>} />
-
-        {/* ==================== RUTAS PREMIUM ==================== */}
         <Route path="/historial-procedimientos" element={<ProtectedRoute session={session}><HistorialProcedimientosScreen /></ProtectedRoute>} />
         <Route path="/historial-financiero" element={<ProtectedRoute session={session}><HistorialFinancieroScreen /></ProtectedRoute>} />
         <Route path="/timeline/:pacienteId" element={<ProtectedRoute session={session}><TimelineUnificadoScreen /></ProtectedRoute>} />
@@ -256,11 +242,7 @@ function App() {
         <Route path="/metricas-perfil/:perfilId" element={<ProtectedRoute session={session}><MetricasPerfilScreen /></ProtectedRoute>} />
         <Route path="/configuracion-notificaciones" element={<ProtectedRoute session={session}><ConfiguracionNotificacionesScreen /></ProtectedRoute>} />
         <Route path="/notificaciones" element={<ProtectedRoute session={session}><NotificacionesScreen /></ProtectedRoute>} />
-
-        {/* ==================== ADMIN ==================== */}
         <Route path="/admin" element={<ProtectedRoute session={session}><AdminDashboard /></ProtectedRoute>} />
-
-        {/* ==================== FALLBACK ==================== */}
         <Route path="*" element={<Navigate to={session ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </SuscripcionProvider>

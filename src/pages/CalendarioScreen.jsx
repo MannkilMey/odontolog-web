@@ -8,10 +8,12 @@ import { generarLinksConfirmacion } from '../utils/confirmacionLinks'
 import { useSuscripcion } from '../hooks/SuscripcionContext'
 import { useLimitesPlan } from '../hooks/useLimitesPlan'
 import UpgradeModal from '../components/UpgradeModal'
-
+import { useTranslation } from 'react-i18next'
 
 export default function CalendarioScreen() {
+
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [citas, setCitas] = useState([])
   const [pacientes, setPacientes] = useState([])
@@ -68,7 +70,7 @@ export default function CalendarioScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar citas')
+      alert(t('errors.loadError', { item: t('nav.calendar') }))
     } finally {
       setLoading(false)
     }
@@ -103,7 +105,7 @@ export default function CalendarioScreen() {
   }
 
   const formatDateDisplay = (dateString) => {
-    return new Date(dateString + 'T12:00:00').toLocaleDateString('es-ES', {
+    return new Date(dateString + 'T12:00:00').toLocaleDateString(i18n.language, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -152,13 +154,13 @@ export default function CalendarioScreen() {
       cancelada: 'Cancelada',
       no_asistio: 'No Asistió'
     }
-    return labels[estado] || estado
+    return t(`appointments.statuses.${estado}`, estado)
   }
 
   const enviarRecordatorioEmail = async (cita) => {
     try {
       if (!cita.pacientes || !cita.pacientes.email) {
-        alert('⚠️ Este paciente no tiene email registrado')
+        alert(t('appointments.noEmail'))
         return
       }
 
@@ -180,62 +182,62 @@ export default function CalendarioScreen() {
       const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
 
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+      const fechaFormateada = fechaCita.toLocaleDateString(i18n.language, {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
       })
 
-      const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 32px;">🦷 ${nombreClinica}</h1>
-            <p style="color: #fef3c7; margin: 10px 0 0 0; font-size: 20px;">🔔 Recordatorio de Cita</p>
-          </div>
-          
-          <div style="padding: 40px 30px; background: white;">
-            <h2 style="color: #1f2937; margin-bottom: 20px;">¡No olvide su cita!</h2>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-              Hola <strong>${cita.pacientes.nombre}</strong>,
-            </p>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-              Este es un recordatorio de su cita dental:
-            </p>
-            
-            <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-              <p style="color: #92400e; margin: 5px 0;">
-                <strong>📅 Fecha:</strong> ${fechaFormateada}
-              </p>
-              <p style="color: #92400e; margin: 5px 0;">
-                <strong>🕐 Hora:</strong> ${formatTime(cita.hora_inicio)}
-              </p>
-              <p style="color: #92400e; margin: 5px 0;">
-                <strong>📋 Motivo:</strong> ${cita.motivo || 'Consulta general'}
-              </p>
-            </div>
-            
-            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-              Por favor confirme su asistencia o avísenos si necesita reprogramar.
-            </p>
-            
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-              <p style="color: #6b7280; font-size: 14px; margin: 0;">
-                ¡Lo esperamos!<br>
-                <strong>${nombreClinica}</strong>
-                ${config?.telefono ? `<br>📱 ${config.telefono}` : ''}
-              </p>
-            </div>
-            
-            <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; text-align: center;">
-              <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-                Powered by <strong>OdontoLog</strong> - Software de Gestión Dental
-              </p>
-            </div>
-          </div>
-        </div>
-      `
+     const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
+      <h1 style="color: white; margin: 0; font-size: 32px;">🦷 ${nombreClinica}</h1>
+      <p style="color: #fef3c7; margin: 10px 0 0 0; font-size: 20px;">🔔 ${t('emailTemplates.reminderTitle')}</p>
+    </div>
+    
+    <div style="padding: 40px 30px; background: white;">
+      <h2 style="color: #1f2937; margin-bottom: 20px;">${t('emailTemplates.dontForget')}</h2>
+      
+      <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+        ${t('emailTemplates.reminderGreeting')} <strong>${cita.pacientes.nombre}</strong>,
+      </p>
+      
+      <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+        ${t('emailTemplates.reminderIntro')}
+      </p>
+      
+      <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+        <p style="color: #92400e; margin: 5px 0;">
+          <strong>📅 ${t('emailTemplates.reminderDate')}:</strong> ${fechaFormateada}
+        </p>
+        <p style="color: #92400e; margin: 5px 0;">
+          <strong>🕐 ${t('emailTemplates.reminderTime')}:</strong> ${formatTime(cita.hora_inicio)}
+        </p>
+        <p style="color: #92400e; margin: 5px 0;">
+          <strong>📋 ${t('emailTemplates.reminderReason')}:</strong> ${cita.motivo || t('appointments.generalConsult')}
+        </p>
+      </div>
+      
+      <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+        ${t('emailTemplates.reminderConfirm')}
+      </p>
+      
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 14px; margin: 0;">
+          ${t('emailTemplates.reminderFooter')}<br>
+          <strong>${nombreClinica}</strong>
+          ${config?.telefono ? `<br>📱 ${config.telefono}` : ''}
+        </p>
+      </div>
+      
+      <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; text-align: center;">
+        <p style="color: #9ca3af; font-size: 11px; margin: 0;">
+          Powered by <strong>OdontoLog</strong> - ${t('emailTemplates.poweredBy')}
+        </p>
+      </div>
+    </div>
+  </div>
+`
 
       const paciente = {
         id: cita.paciente_id,
@@ -261,7 +263,7 @@ export default function CalendarioScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al preparar recordatorio: ' + error.message)
+      alert(t('errors.sendError', { item: 'email' }) + ': ' + error.message)
     }
   }
 
@@ -276,7 +278,7 @@ export default function CalendarioScreen() {
       }
 
       if (!cita.pacientes || !cita.pacientes.telefono) {
-        alert('⚠️ Este paciente no tiene teléfono registrado')
+        alert(t('appointments.noPhone'))
         return
       }
 
@@ -305,7 +307,7 @@ export default function CalendarioScreen() {
       const nombreClinica = config?.nombre_comercial || config?.razon_social || 'Clínica Dental'
 
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+      const fechaFormateada = fechaCita.toLocaleDateString(i18n.language, {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
@@ -347,7 +349,7 @@ export default function CalendarioScreen() {
 
     } catch (error) {
       console.error('❌ Error al enviar WhatsApp con links:', error)
-      alert('❌ Error al enviar WhatsApp: ' + error.message)
+      alert(t('errors.sendError', { item: 'WhatsApp' }))
     }
   }
 
@@ -362,7 +364,7 @@ export default function CalendarioScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando calendario...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -372,17 +374,17 @@ export default function CalendarioScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+         {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📅 Calendario de Citas</div>
-          <div style={styles.subtitle}>{citas.length} citas programadas</div>
+          <div style={styles.title}>📅 {t('appointments.title')}</div>
+          <div style={styles.subtitle}>{t('appointments.scheduled', { count: citas.length })}</div>
         </div>
         <button 
           onClick={() => navigate('/crear-cita')} 
           style={styles.addButton}
         >
-          + Nueva Cita
+           {t('appointments.newAppointment')}
         </button>
       </div>
 
@@ -394,25 +396,25 @@ export default function CalendarioScreen() {
               style={{...styles.viewButton, ...(vistaActual === 'dia' && styles.viewButtonActive)}}
               onClick={() => setVistaActual('dia')}
             >
-              Día
+              {t('appointments.day')}
             </button>
             <button
               style={{...styles.viewButton, ...(vistaActual === 'semana' && styles.viewButtonActive)}}
               onClick={() => setVistaActual('semana')}
             >
-              Semana
+              {t('appointments.week')}
             </button>
             <button
               style={{...styles.viewButton, ...(vistaActual === 'mes' && styles.viewButtonActive)}}
               onClick={() => setVistaActual('mes')}
             >
-              Mes
+              {t('appointments.month')}
             </button>
           </div>
 
           <div style={styles.dateNavigation}>
             <button style={styles.navButton} onClick={() => cambiarFecha(-1)}>←</button>
-            <button style={styles.todayButton} onClick={irHoy}>Hoy</button>
+            <button style={styles.todayButton} onClick={irHoy}>{t('common.today')}</button>
             <button style={styles.navButton} onClick={() => cambiarFecha(1)}>→</button>
           </div>
         </div>
@@ -420,8 +422,8 @@ export default function CalendarioScreen() {
         {/* Título de Fecha */}
         <div style={styles.dateTitle}>
           {vistaActual === 'dia' && formatDateDisplay(formatDate(fechaSeleccionada))}
-          {vistaActual === 'semana' && `Semana del ${formatDate(fechaSeleccionada)}`}
-          {vistaActual === 'mes' && new Date(fechaSeleccionada).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+          {vistaActual === 'semana' && `${t('appointments.week')} ${formatDate(fechaSeleccionada)}`}
+          {vistaActual === 'mes' && new Date(fechaSeleccionada).toLocaleDateString(t('locale', { defaultValue: 'es-ES' }), { month: 'long', year: 'numeric' })}
         </div>
 
         {/* Vistas */}
@@ -436,6 +438,7 @@ export default function CalendarioScreen() {
             enviarRecordatorioEmail={enviarRecordatorioEmail}
             enviarRecordatorioWhatsApp={enviarRecordatorioWhatsApp}
             isPremium={isPremium}
+             t={t}
           />
         )}
 
@@ -446,6 +449,8 @@ export default function CalendarioScreen() {
             navigate={navigate}
             formatTime={formatTime}
             getEstadoColor={getEstadoColor}
+            t={t}
+            i18n={i18n}
           />
         )}
 
@@ -455,6 +460,8 @@ export default function CalendarioScreen() {
             fechaSeleccionada={fechaSeleccionada}
             navigate={navigate}
             getEstadoColor={getEstadoColor}
+            t={t}
+            i18n={i18n}
           />
         )}
       </div>
@@ -479,26 +486,26 @@ export default function CalendarioScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )
 }
 
 // Componente Vista Día
-function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstadoLabel, enviarRecordatorioEmail, enviarRecordatorioWhatsApp, isPremium }) {
+function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstadoLabel, enviarRecordatorioEmail, enviarRecordatorioWhatsApp, isPremium, t}) {
   const citasDelDia = citas.filter(c => c.fecha_cita === fecha)
 
   if (citasDelDia.length === 0) {
     return (
       <div style={styles.emptyState}>
         <div style={styles.emptyIcon}>📅</div>
-        <div style={styles.emptyText}>No hay citas programadas para este día</div>
+        <div style={styles.emptyText}>{t('appointments.noAppointmentsDay')}</div>
         <button 
           style={styles.emptyButton}
           onClick={() => navigate('/crear-cita')}
         >
-          + Programar Cita
+          {t('appointments.scheduleAppointment')}
         </button>
       </div>
     )
@@ -551,7 +558,7 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
                 e.stopPropagation()
                 enviarRecordatorioEmail(cita)
               }}
-              title="Enviar recordatorio por Email"
+              title={t('appointments.reminderEmail')}
             >
               📧 Email
             </button>
@@ -564,7 +571,7 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
                 e.stopPropagation()
                 enviarRecordatorioWhatsApp(cita)
               }}
-              title={isPremium ? "Enviar recordatorio por WhatsApp" : "Función Premium"}
+              title={isPremium ? t('appointments.reminderWhatsApp') : t('billing.premiumFeature')}
             >
               📱 WhatsApp {!isPremium && '⭐'}
             </button>
@@ -574,9 +581,9 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
                 e.stopPropagation()
                 navigate(`/cita/${cita.id}`)
               }}
-              title="Ver detalles"
+              title={t('common.details')}
             >
-              📋 Detalles
+              📋 {t('common.details')}
             </button>
           </div>
         </div>
@@ -586,7 +593,7 @@ function VistaDia({ citas, fecha, navigate, formatTime, getEstadoColor, getEstad
 }
 
 // Componente Vista Semana
-function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, getEstadoColor }) {
+function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, getEstadoColor,t,i18n }) {
   const fechaLimpia = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), fechaSeleccionada.getDate())
   const inicioSemana = new Date(fechaLimpia)
   inicioSemana.setDate(fechaLimpia.getDate() - fechaLimpia.getDay())
@@ -611,14 +618,14 @@ function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, g
               ...(esHoy && styles.diaHeaderHoy)
             }}>
               <div style={styles.diaNombre}>
-                {dia.toLocaleDateString('es-ES', { weekday: 'short' })}
+                {dia.toLocaleDateString(i18n.language, { weekday: 'short' })}
               </div>
               <div style={styles.diaNumero}>{dia.getDate()}</div>
             </div>
 
             <div style={styles.citasMini}>
               {citasDelDia.length === 0 ? (
-                <div style={styles.noCitas}>Sin citas</div>
+                <div style={styles.noCitas}>{t('appointments.noCitas')}</div>
               ) : (
                 citasDelDia.map((cita, idx) => (
                   <div 
@@ -647,7 +654,7 @@ function VistaSemana({ citasPorFecha, fechaSeleccionada, navigate, formatTime, g
 }
 
 // Componente Vista Mes
-function VistaMes({ citasPorFecha, fechaSeleccionada, navigate, getEstadoColor }) {
+function VistaMes({ citasPorFecha, fechaSeleccionada, navigate, getEstadoColor,t,i18n }) {
   const primerDia = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth(), 1)
   const ultimoDia = new Date(fechaSeleccionada.getFullYear(), fechaSeleccionada.getMonth() + 1, 0)
   
@@ -677,7 +684,12 @@ function VistaMes({ citasPorFecha, fechaSeleccionada, navigate, getEstadoColor }
   return (
     <div style={styles.mesContainer}>
       <div style={styles.mesGrid}>
-        {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia, idx) => (
+        {Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(2024, 0, i) // Jan 2024 starts on Monday, but we need Sunday
+          // Trick: Jan 7 2024 is Sunday
+          const date = new Date(2024, 0, 7 + i)
+          return date.toLocaleDateString(i18n.language, { weekday: 'short' })
+        }).map((dia, idx) => (
           <div key={idx} style={styles.mesDiaHeader}>{dia}</div>
         ))}
         

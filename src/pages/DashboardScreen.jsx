@@ -6,6 +6,10 @@ import LimitesMenualesCard from '../components/LimitesMenualesCard'
 import CitasProximasPopup from '../components/CitasProximasPopup'
 import ModalUpgrade from '../components/ModalUpgrade'
 import ToastNotification from '../components/ToastNotification'
+import { useTranslation } from 'react-i18next'
+import LanguageSelector from '../components/LanguageSelector'
+import { useMoneda } from '../hooks/useMoneda'
+
 
 // ═══════════════════════════════════════════════════════════
 // CAMBIOS EN DASHBOARD:
@@ -18,6 +22,9 @@ import ToastNotification from '../components/ToastNotification'
 // ═══════════════════════════════════════════════════════════
 
 export default function DashboardScreen({ session }) {
+  const { t } = useTranslation()
+  const { formatMoney } = useMoneda()
+
   
   const [stats, setStats] = useState({
     totalPacientes: 0,
@@ -124,7 +131,7 @@ export default function DashboardScreen({ session }) {
   }
 
   const handleLogout = async () => {
-    if (window.confirm('¿Estás seguro que deseas cerrar sesión?')) {
+    if (window.confirm(t('auth.logoutConfirm'))) {
       await supabase.auth.signOut()
     }
   }
@@ -181,8 +188,8 @@ export default function DashboardScreen({ session }) {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loadingSpinner}>🔄</div>
-        <div style={styles.loadingTitle}>Cargando información...</div>
-        <div style={styles.loadingSubtitle}>Verificando suscripción y permisos</div>
+        <div style={styles.loadingTitle}>{t('common.loading')}</div>
+        <div style={styles.loadingSubtitle}>{t('dashboard.verifyingSubscription')}</div>
       </div>
     )
   }
@@ -192,10 +199,10 @@ export default function DashboardScreen({ session }) {
     return (
       <div style={styles.errorContainer}>
         <div style={styles.errorIcon}>⚠️</div>
-        <div style={styles.errorTitle}>Error cargando suscripción</div>
+        <div style={styles.errorTitle}>{t('dashboard.subscriptionError')}</div>
         <div style={styles.errorMessage}>{suscripcionError}</div>
         <button onClick={() => window.location.reload()} style={styles.retryButton}>
-          🔄 Reintentar
+          🔄 {t('common.refresh')}
         </button>
       </div>
     )
@@ -206,8 +213,8 @@ export default function DashboardScreen({ session }) {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loadingSpinner}>🔄</div>
-        <div style={styles.loadingTitle}>Cargando perfil...</div>
-        <div style={styles.loadingSubtitle}>Preparando dashboard</div>
+        <div style={styles.loadingTitle}>{t('dashboard.loadingProfile')}</div>
+        <div style={styles.loadingSubtitle}>{t('dashboard.preparingDashboard')}</div>
       </div>
     )
   }
@@ -227,7 +234,7 @@ export default function DashboardScreen({ session }) {
         <div>
           <div style={styles.headerTitle}>🦷 OdontoLog</div>
           <div style={styles.headerSubtitle}>
-            Bienvenido, Dr. {userProfile?.nombre || userProfile?.email?.split('@')[0]}
+            {t('dashboard.welcome', { name: userProfile?.nombre || userProfile?.email?.split('@')[0] })}
             {plan && (
               <span style={{
                 ...styles.planBadge,
@@ -270,6 +277,8 @@ export default function DashboardScreen({ session }) {
               )}
             </button>
           )}
+          
+           <LanguageSelector compact showCurrency />
 
           <button 
             type="button"
@@ -284,7 +293,7 @@ export default function DashboardScreen({ session }) {
             onClick={handleLogout}
             style={styles.logoutButton}
           >
-            Cerrar Sesión
+          {t('auth.logout')}
           </button>
         </div>
       </div>
@@ -299,7 +308,7 @@ export default function DashboardScreen({ session }) {
           <div style={styles.notificacionesCard}>
             <div style={styles.notificacionesCardHeader}>
               <div style={styles.notificacionesCardTitle}>
-                🔔 Notificaciones Recientes
+                🔔 {t('notifications.title')}
                 {noLeidas > 0 && (
                   <span style={styles.notificacionesBadge}>{noLeidas}</span>
                 )}
@@ -308,7 +317,7 @@ export default function DashboardScreen({ session }) {
                 onClick={() => navigate('/notificaciones')}
                 style={styles.verTodasButton}
               >
-                Ver todas →
+                {t('common.viewMore')} →
               </button>
             </div>
             <div style={styles.notificacionesCardContent}>
@@ -338,26 +347,26 @@ export default function DashboardScreen({ session }) {
           <div style={styles.statCard}>
             <div style={styles.statIcon}>👥</div>
             <div style={styles.statNumber}>{statsLoading ? '...' : stats.totalPacientes}</div>
-            <div style={styles.statLabel}>Pacientes Totales</div>
-            <button style={styles.statButton} onClick={() => navigate('/clientes')} disabled={statsLoading}>Ver Todos</button>
+            <div style={styles.statLabel}>{t('dashboard.totalPatients')}</div>
+            <button style={styles.statButton} onClick={() => navigate('/clientes')} disabled={statsLoading}>{t('common.viewMore')}</button>
           </div>
           <div style={styles.statCard}>
             <div style={styles.statIcon}>📅</div>
             <div style={styles.statNumber}>{statsLoading ? '...' : stats.citasHoy}</div>
-            <div style={styles.statLabel}>Citas Hoy</div>
-            <button style={styles.statButton} onClick={() => navigate('/calendario')} disabled={statsLoading}>Ver Calendario</button>
+            <div style={styles.statLabel}>{t('dashboard.todayAppointments')}</div>
+            <button style={styles.statButton} onClick={() => navigate('/calendario')} disabled={statsLoading}>{t('dashboard.viewCalendar')}</button>
           </div>
           <div style={styles.statCard}>
             <div style={styles.statIcon}>💳</div>
             <div style={styles.statNumber}>{statsLoading ? '...' : stats.cuentasPendientes}</div>
-            <div style={styles.statLabel}>Transacciones</div>
-            <button style={styles.statButton} onClick={() => navigate('/cuentas-por-cobrar')} disabled={statsLoading}>Ver Historial</button>
+            <div style={styles.statLabel}>{t('billing.payments')}</div>
+            <button style={styles.statButton} onClick={() => navigate('/cuentas-por-cobrar')} disabled={statsLoading}>{t('common.viewMore')}</button>
           </div>
           <div style={styles.statCard}>
             <div style={styles.statIcon}>💵</div>
-            <div style={styles.statNumber}>{statsLoading ? '...' : `$${Number(stats.ingresosMes).toLocaleString()}`}</div>
-            <div style={styles.statLabel}>Ingresos del Mes</div>
-            <button style={styles.statButton} onClick={() => handleRestrictedFeature('reportes', '/reportes')} disabled={statsLoading}>Ver Reportes</button>
+            <div style={styles.statNumber}>{statsLoading ? '...' : formatMoney(stats.ingresosMes)}</div>
+            <div style={styles.statLabel}>{t('dashboard.monthlyRevenue')}</div>
+            <button style={styles.statButton} onClick={() => handleRestrictedFeature('reportes', '/reportes')} disabled={statsLoading}>{t('common.viewMore')}</button>
           </div>
         </div>
 
@@ -367,20 +376,20 @@ export default function DashboardScreen({ session }) {
             <div style={styles.premiumBannerContent}>
               <div style={styles.premiumBannerIcon}>⭐</div>
               <div style={styles.premiumBannerText}>
-                <div style={styles.premiumBannerTitle}>¡Potencia tu clínica con Premium!</div>
+                <div style={styles.premiumBannerTitle}>{t('dashboard.upgradeBannerTitle')}</div>
                 <div style={styles.premiumBannerDescription}>
-                  Notificaciones automáticas, reportes avanzados, límites mensuales y mucho más.
+                  {t('dashboard.upgradeBannerDesc')}
                 </div>
               </div>
               <button onClick={() => navigate('/planes')} style={styles.premiumBannerButton}>
-                Upgrade ahora →
+                {t('dashboard.upgradeNow')} →
               </button>
             </div>
             <div style={styles.premiumFeatures}>
-              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>📊</div><div style={styles.featureText}>Reportes</div></div>
-              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>🔔</div><div style={styles.featureText}>Notificaciones</div></div>
-              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>📈</div><div style={styles.featureText}>Métricas</div></div>
-              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>💾</div><div style={styles.featureText}>Backups</div></div>
+              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>📊</div><div style={styles.featureText}>{t('dashboard.reports')}</div></div>
+              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>🔔</div><div style={styles.featureText}>{t('notifications.title')}</div></div>
+              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>📈</div><div style={styles.featureText}>{t('dashboard.metrics')}</div></div>
+              <div style={styles.premiumFeature}><div style={styles.featureIconSmall}>💾</div><div style={styles.featureText}>{t('dashboard.backups')}</div></div>
             </div>
           </div>
         )}
@@ -389,31 +398,31 @@ export default function DashboardScreen({ session }) {
         {plan && plan.codigo !== 'free' && (
           <div style={styles.quickAccessSection}>
             <div style={styles.quickAccessHeader}>
-              <div style={styles.sectionTitle}>⚡ Accesos Rápidos Premium</div>
+              <div style={styles.sectionTitle}>⚡ {t('dashboard.quickAccessPremium')}</div>
               <div style={styles.planBadgeLarge}>{plan.nombre}</div>
             </div>
             <div style={styles.quickAccessGrid}>
               <button onClick={() => navigate('/notificaciones')} style={styles.quickAccessCard}>
                 <div style={styles.quickAccessIcon}>🔔</div>
-                <div style={styles.quickAccessTitle}>Notificaciones</div>
-                <div style={styles.quickAccessDescription}>Centro de notificaciones</div>
+                <div style={styles.quickAccessTitle}>{t('notifications.title')}</div>
+                <div style={styles.quickAccessDescription}>{t('dashboard.notificationCenter')}</div>
               </button>
               <button onClick={() => navigate('/configuracion-notificaciones')} style={styles.quickAccessCard}>
                 <div style={styles.quickAccessIcon}>⚙️</div>
-                <div style={styles.quickAccessTitle}>Config. Notificaciones</div>
-                <div style={styles.quickAccessDescription}>Recordatorios automáticos</div>
+                <div style={styles.quickAccessTitle}>{t('dashboard.notificationConfig')}</div>
+                <div style={styles.quickAccessDescription}>{t('dashboard.autoReminders')}</div>
               </button>
               {plan?.codigo === 'enterprise' && (
                 <>
                   <button onClick={() => navigate('/gestion-equipo')} style={styles.quickAccessCard}>
                     <div style={styles.quickAccessIcon}>👥</div>
-                    <div style={styles.quickAccessTitle}>Gestión Equipo</div>
-                    <div style={styles.quickAccessDescription}>Administrar colaboradores</div>
+                    <div style={styles.quickAccessTitle}>{t('dashboard.teamManagement')}</div>
+                    <div style={styles.quickAccessDescription}>{t('dashboard.manageCollaborators')}</div>
                   </button>
                   <button onClick={() => navigate('/dashboard-equipo')} style={styles.quickAccessCard}>
                     <div style={styles.quickAccessIcon}>📈</div>
-                    <div style={styles.quickAccessTitle}>Dashboard Equipo</div>
-                    <div style={styles.quickAccessDescription}>Métricas consolidadas</div>
+                    <div style={styles.quickAccessTitle}>{t('dashboard.teamDashboard')}</div>
+                    <div style={styles.quickAccessDescription}>{t('dashboard.consolidatedMetrics')}</div>
                   </button>
                 </>
               )}
@@ -423,124 +432,124 @@ export default function DashboardScreen({ session }) {
 
         {/* Acciones Principales */}
         <div style={styles.mainActions}>
-          <div style={styles.mainActionsTitle}>¿Qué deseas hacer?</div>
+          <div style={styles.mainActionsTitle}>{t('dashboard.quickActions')}</div>
           <div style={styles.mainActionsGrid}>
             {/* FUNCIONES GRATUITAS */}
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/clientes')}>
               <div style={styles.mainActionIcon}>👥</div>
-              <div style={styles.mainActionTitle}>Gestionar Pacientes</div>
-              <div style={styles.mainActionSubtitle}>Ver, editar y administrar información de pacientes</div>
+              <div style={styles.mainActionTitle}>{t('dashboard.managePatients')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.managePatientsDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/agregar-paciente')}>
               <div style={styles.mainActionIcon}>➕</div>
-              <div style={styles.mainActionTitle}>Nuevo Paciente</div>
-              <div style={styles.mainActionSubtitle}>Registrar nuevo paciente en el sistema</div>
+              <div style={styles.mainActionTitle}>{t('dashboard.newPatient')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.newPatientDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/calendario')}>
               <div style={styles.mainActionIcon}>📅</div>
-              <div style={styles.mainActionTitle}>Calendario de Citas</div>
-              <div style={styles.mainActionSubtitle}>Gestionar horarios y citas médicas</div>
+              <div style={styles.mainActionTitle}>{t('appointments.title')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.calendarDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/catalogo-procedimientos')}>
               <div style={styles.mainActionIcon}>📚</div>
-              <div style={styles.mainActionTitle}>Catálogo de Procedimientos</div>
-              <div style={styles.mainActionSubtitle}>Gestionar tratamientos y precios</div>
+              <div style={styles.mainActionTitle}>{t('dashboard.procedures')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.proceduresDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/gastos')}>
               <div style={styles.mainActionIcon}>💸</div>
-              <div style={styles.mainActionTitle}>Control de Gastos</div>
-              <div style={styles.mainActionSubtitle}>Registrar y monitorear egresos</div>
+              <div style={styles.mainActionTitle}>{t('dashboard.expenses')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.expensesDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/cuentas-por-cobrar')}>
               <div style={styles.mainActionIcon}>💳</div>
-              <div style={styles.mainActionTitle}>Cuentas por Cobrar</div>
-              <div style={styles.mainActionSubtitle}>Administrar pagos y facturación</div>
+             <div style={styles.mainActionTitle}>{t('dashboard.receivables')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.receivablesDesc')}</div>
             </button>
 
             {/* FUNCIONES PREMIUM */}
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('historial_procedimientos', '/historial-procedimientos')}>
               <div style={styles.mainActionIcon}>🦷</div>
               <div style={styles.mainActionTitle}>
-                Historial Clínico
+                {t('dashboard.clinicalHistory')}
                 {!tieneAcceso('historial_procedimientos') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Procedimientos y tratamientos realizados</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.clinicalHistoryDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('historial_financiero', '/historial-financiero')}>
               <div style={styles.mainActionIcon}>💰</div>
               <div style={styles.mainActionTitle}>
-                Historial Financiero
+                {t('dashboard.financialHistory')}
                 {!tieneAcceso('historial_financiero') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Análisis de ingresos y gastos</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.financialHistoryDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('mensajes', '/mensajes-enviados')}>
               <div style={styles.mainActionIcon}>📬</div>
               <div style={styles.mainActionTitle}>
-                Mensajes y Recordatorios
+                {t('dashboard.messagesReminders')}
                 {!tieneAcceso('mensajes') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Comunicaciones automáticas</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.messagesDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('recordatorios', '/recordatorios')}>
               <div style={styles.mainActionIcon}>🔔</div>
               <div style={styles.mainActionTitle}>
-                Recordatorios Automáticos
+                {t('dashboard.autoRemindersTitle')}
                 {!tieneAcceso('recordatorios') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Notificaciones programadas</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.autoRemindersDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('reportes', '/reportes')}>
               <div style={styles.mainActionIcon}>📈</div>
               <div style={styles.mainActionTitle}>
-                Reportes y Análisis
+                {t('dashboard.reportsAnalysis')}
                 {!tieneAcceso('reportes') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Informes financieros y estadísticas</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.reportsDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('metricas', '/metricas')}>
               <div style={styles.mainActionIcon}>📊</div>
               <div style={styles.mainActionTitle}>
-                Métricas Avanzadas
+                {t('dashboard.advancedMetrics')}
                 {!tieneAcceso('metricas') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Dashboard de métricas y KPIs</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.metricsDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('backups', '/backups')}>
               <div style={styles.mainActionIcon}>💾</div>
               <div style={styles.mainActionTitle}>
-                Backups y Exportación
+                {t('dashboard.backupsExport')}
                 {!tieneAcceso('backups') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Respaldo y exportación de datos</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.backupsDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => handleRestrictedFeature('exportar', '/exportar')}>
               <div style={styles.mainActionIcon}>📤</div>
               <div style={styles.mainActionTitle}>
-                Exportar Datos
+                {t('dashboard.exportData')}
                 {!tieneAcceso('exportar') && <span style={styles.premiumBadge}>PRO</span>}
               </div>
-              <div style={styles.mainActionSubtitle}>Exportar a Excel y otros formatos</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.exportDesc')}</div>
             </button>
 
             {/* FUNCIONES ADICIONALES */}
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/planes-pago')}>
               <div style={styles.mainActionIcon}>💳</div>
-              <div style={styles.mainActionTitle}>Planes de Pago</div>
-              <div style={styles.mainActionSubtitle}>Crear y gestionar financiamientos</div>
+              <div style={styles.mainActionTitle}>{t('dashboard.paymentPlans')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.paymentPlansDesc')}</div>
             </button>
             <button type="button" style={styles.mainActionCard} onClick={() => navigate('/historial-pagos')}>
               <div style={styles.mainActionIcon}>💰</div>
-              <div style={styles.mainActionTitle}>Historial de Pagos</div>
-              <div style={styles.mainActionSubtitle}>Ver pagos de suscripciones</div>
+              <div style={styles.mainActionTitle}>{t('dashboard.paymentHistory')}</div>
+              <div style={styles.mainActionSubtitle}>{t('dashboard.paymentHistoryDesc')}</div>
             </button>
             <button type="button" style={{...styles.mainActionCard, ...styles.planesCard}} onClick={() => navigate('/planes')}>
               <div style={styles.mainActionIcon}>⭐</div>
               <div style={styles.mainActionTitle}>
-                {isPremium ? 'Gestionar Plan' : 'Upgrade a Premium'}
+                {isPremium ?  t('dashboard.managePlan') : t('dashboard.upgradePremium')}
               </div>
               <div style={styles.mainActionSubtitle}>
-                {isPremium ? `Plan ${plan?.nombre} - $${plan?.precio_mensual_usd}/mes` : 'Desbloquea todas las funcionalidades premium'}
+                {isPremium ? `Plan ${plan?.nombre} - $${plan?.precio_mensual_usd}/${t('common.month')}` : t('dashboard.unlockAll')}
               </div>
             </button>
           </div>
@@ -550,9 +559,9 @@ export default function DashboardScreen({ session }) {
       {/* Footer */}
       <div style={styles.footer}>
         <div style={styles.footerText}>
-          OdontoLog - Tu clínica en la nube | Plan {plan?.nombre || 'Cargando...'}
+          OdontoLog - {t('dashboard.footerCloud')} | Plan {plan?.nombre || 'Cargando...'}
         </div>
-        <div style={styles.footerVersion}> Diseñado por MCorp</div>
+        <div style={styles.footerVersion}> {t('common.poweredBy')}</div>
       </div>
       
       <ToastNotification />

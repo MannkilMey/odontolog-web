@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+
 
 export default function CrearCitaScreen() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   
@@ -49,7 +52,7 @@ export default function CrearCitaScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar pacientes')
+      alert(t('errors.loadError', { item: t('patients.title') }))
     } finally {
       setLoading(false)
     }
@@ -80,27 +83,27 @@ export default function CrearCitaScreen() {
 
   const validateForm = () => {
     if (!formData.paciente_id) {
-      alert('Debes seleccionar un paciente')
+      alert(t('errors.requiredField', { field: t('appointments.patient') }))
       return false
     }
 
     if (!formData.fecha_cita) {
-      alert('La fecha es requerida')
+      alert(t('errors.requiredField', { field: t('common.date') }))
       return false
     }
 
     if (!formData.hora_inicio || !formData.hora_fin) {
-      alert('Las horas son requeridas')
+      alert(t('errors.requiredField', { field: t('common.time') }))
       return false
     }
 
     if (formData.hora_fin <= formData.hora_inicio) {
-      alert('La hora de fin debe ser posterior a la hora de inicio')
+      alert(t('crearCita.endAfterStart'))
       return false
     }
 
     if (!formData.motivo.trim()) {
-      alert('El motivo de la cita es requerido')
+      alert(t('errors.requiredField', { field: t('appointments.reason') }))
       return false
     }
 
@@ -122,7 +125,8 @@ export default function CrearCitaScreen() {
 
     if (haySuperposicion) {
       const confirmar = window.confirm(
-        '⚠️ Ya existe una cita en ese horario.\n\n¿Deseas programarla de todas formas?'
+       t('crearCita.overlapConfirm')
+
       )
       if (!confirmar) return false
     }
@@ -156,12 +160,12 @@ export default function CrearCitaScreen() {
 
       if (error) throw error
 
-      alert('✅ Cita programada exitosamente')
+      alert(`✅ ${t('crearCita.saved')}`)
       navigate('/calendario')
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al guardar cita: ' + error.message)
+      alert(t('errors.saveError', { item: t('crearCita.appointment') }) + ': ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -179,7 +183,7 @@ export default function CrearCitaScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -189,11 +193,11 @@ export default function CrearCitaScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate(-1)} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📅 Nueva Cita</div>
-          <div style={styles.subtitle}>Programar una cita</div>
+          <div style={styles.title}>📅 {t('crearCita.title')}</div>
+          <div style={styles.subtitle}>{t('crearCita.subtitle')}</div>
         </div>
         <div style={{ width: '80px' }} />
       </div>
@@ -202,15 +206,15 @@ export default function CrearCitaScreen() {
         <div style={styles.form}>
           {/* Información de la Cita */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>Información de la Cita</div>
+            <div style={styles.sectionTitle}>{t('citaDetail.appointmentInfo')}</div>
 
-            <label style={styles.label}>Paciente *</label>
+            <label style={styles.label}>{t('appointments.patient')} *</label>
             <select
               style={styles.select}
               value={formData.paciente_id}
               onChange={(e) => updateFormField('paciente_id', e.target.value)}
             >
-              <option value="">Seleccionar paciente</option>
+              <option value="">{t('crearCita.selectPatient')}</option>
               {pacientes.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.apellido}, {p.nombre} {p.telefono ? `(${p.telefono})` : ''}
@@ -218,7 +222,7 @@ export default function CrearCitaScreen() {
               ))}
             </select>
 
-            <label style={styles.label}>Fecha de la Cita *</label>
+            <label style={styles.label}>{t('crearCita.appointmentDate')} *</label>
             <input
               type="date"
               style={styles.input}
@@ -229,7 +233,7 @@ export default function CrearCitaScreen() {
 
             <div style={styles.row}>
               <div style={styles.field}>
-                <label style={styles.label}>Hora de Inicio *</label>
+                <label style={styles.label}>{t('crearCita.startTime')} *</label>
                 <select
                   style={styles.select}
                   value={formData.hora_inicio}
@@ -242,7 +246,7 @@ export default function CrearCitaScreen() {
               </div>
 
               <div style={styles.field}>
-                <label style={styles.label}>Hora de Fin *</label>
+                <label style={styles.label}>{t('crearCita.endTime')} *</label>
                 <select
                   style={styles.select}
                   value={formData.hora_fin}
@@ -255,41 +259,41 @@ export default function CrearCitaScreen() {
               </div>
             </div>
 
-            <label style={styles.label}>Motivo de la Cita *</label>
+            <label style={styles.label}>{t('crearCita.appointmentReason')} *</label>
             <input
               type="text"
               style={styles.input}
-              placeholder="Ej: Limpieza dental, Control general, Tratamiento de conducto"
+              placeholder={t('crearCita.reasonPlaceholder')}
               value={formData.motivo}
               onChange={(e) => updateFormField('motivo', e.target.value)}
             />
 
-            <label style={styles.label}>Tratamiento Planificado (opcional)</label>
+            <label style={styles.label}>{t('crearCita.plannedTreatment')} ({t('common.optional')})</label>
             <input
               type="text"
               style={styles.input}
-              placeholder="Descripción del tratamiento a realizar"
+              placeholder={t('crearCita.treatmentPlaceholder')}
               value={formData.tratamiento_planificado}
               onChange={(e) => updateFormField('tratamiento_planificado', e.target.value)}
             />
 
-            <label style={styles.label}>Notas Adicionales (opcional)</label>
+            <label style={styles.label}>{t('patients.additionalNotes')} ({t('common.optional')})</label>
             <textarea
               style={{...styles.input, ...styles.textArea}}
-              placeholder="Notas o recordatorios sobre esta cita..."
+              placeholder={t('crearCita.notesPlaceholder')}
               value={formData.notas}
               onChange={(e) => updateFormField('notas', e.target.value)}
               rows={3}
             />
 
-            <label style={styles.label}>Estado de la Cita</label>
+            <label style={styles.label}>{t('crearCita.appointmentStatus')}</label>
             <select
               style={styles.select}
               value={formData.estado}
               onChange={(e) => updateFormField('estado', e.target.value)}
             >
-              <option value="pendiente">Pendiente</option>
-              <option value="confirmada">Confirmada</option>
+              <option value="pendiente">{t('appointments.statuses.pendiente')}</option>
+              <option value="confirmada">{t('appointments.statuses.confirmada')}</option>
             </select>
           </div>
 
@@ -297,7 +301,7 @@ export default function CrearCitaScreen() {
           {citasExistentes.length > 0 && (
             <div style={styles.section}>
               <div style={styles.sectionTitle}>
-                📋 Citas programadas para {formData.fecha_cita}
+                📋 {t('crearCita.existingAppointments', { date: formData.fecha_cita })}
               </div>
               <div style={styles.citasExistentes}>
                 {citasExistentes.map((cita, idx) => (
@@ -320,7 +324,7 @@ export default function CrearCitaScreen() {
               onClick={() => navigate(-1)}
               style={styles.cancelButton}
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
@@ -330,7 +334,7 @@ export default function CrearCitaScreen() {
                 ...(saving && styles.saveButtonDisabled)
               }}
             >
-              {saving ? 'Guardando...' : '💾 Programar Cita'}
+              {saving ? t('common.saving') : `💾 ${t('crearCita.scheduleAppointment')}`}
             </button>
           </div>
         </div>
@@ -338,7 +342,7 @@ export default function CrearCitaScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

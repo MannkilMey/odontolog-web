@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
 
 export default function HistorialProcedimientosScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
   const [loading, setLoading] = useState(true)
   const [procedimientos, setProcedimientos] = useState([])
   const [pacientes, setPacientes] = useState([])
@@ -64,18 +68,14 @@ export default function HistorialProcedimientosScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar datos')
+      alert(t('errors.loadError', { item: t('histProc.title') }))
     } finally {
       setLoading(false)
     }
   }
 
-  const formatMoney = (value) => {
-    return `${config?.simbolo_moneda || 'Gs.'} ${Number(value).toLocaleString('es-PY')}`
-  }
-
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    return new Date(dateString).toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -152,7 +152,7 @@ export default function HistorialProcedimientosScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando historial...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -162,12 +162,12 @@ export default function HistorialProcedimientosScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>🦷 Historial de Procedimientos</div>
+          <div style={styles.title}>🦷 {t('histProc.title')}</div>
           <div style={styles.subtitle}>
-            {procedimientosFiltrados.length} de {procedimientos.length} procedimientos
+            {t('histProc.filtered', { shown: procedimientosFiltrados.length, total: procedimientos.length })}
           </div>
         </div>
         <div style={{ width: '80px' }} />
@@ -177,15 +177,15 @@ export default function HistorialProcedimientosScreen() {
         {/* Estadísticas */}
         <div style={styles.statsContainer}>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Procedimientos</div>
+            <div style={styles.statLabel}>{t('histProc.totalProcedures')}</div>
             <div style={styles.statValue}>{stats.totalProcedimientos}</div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Ingreso Generado</div>
+            <div style={styles.statLabel}>{t('histProc.generatedIncome')}</div>
             <div style={styles.statValue}>{formatMoney(stats.ingresoTotal)}</div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Más Común</div>
+            <div style={styles.statLabel}>{t('histProc.mostCommon')}</div>
             <div style={{...styles.statValue, fontSize: '16px'}}>
               {stats.procedimientoMasComun || 'N/A'}
             </div>
@@ -198,7 +198,7 @@ export default function HistorialProcedimientosScreen() {
           <input
             type="text"
             style={styles.searchInput}
-            placeholder="🔍 Buscar por paciente, procedimiento o notas..."
+            placeholder={`🔍 ${t('histProc.searchPlaceholder')}`}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
@@ -210,7 +210,7 @@ export default function HistorialProcedimientosScreen() {
               value={filtroPaciente}
               onChange={(e) => setFiltroPaciente(e.target.value)}
             >
-              <option value="todos">👤 Todos los pacientes</option>
+              <option value="todos">👤 {t('histProc.allPatients')}</option>
               {pacientes.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.apellido}, {p.nombre}
@@ -224,11 +224,11 @@ export default function HistorialProcedimientosScreen() {
               value={filtroFecha}
               onChange={(e) => setFiltroFecha(e.target.value)}
             >
-              <option value="todos">📅 Todas las fechas</option>
-              <option value="hoy">Hoy</option>
-              <option value="semana">Última semana</option>
-              <option value="mes">Este mes</option>
-              <option value="año">Este año</option>
+              <option value="todos">📅 {t('histProc.allDates')}</option>
+              <option value="hoy">{t('common.today')}</option>
+              <option value="semana">{t('historial.lastWeek')}</option>
+              <option value="mes">{t('equipo.thisMonth')}</option>
+              <option value="año">{t('historial.thisYear')}</option>
             </select>
 
             {/* Botón limpiar filtros */}
@@ -241,7 +241,7 @@ export default function HistorialProcedimientosScreen() {
                   setBusqueda('')
                 }}
               >
-                ✕ Limpiar
+                ✕ {t('histProc.clear')}
               </button>
             )}
           </div>
@@ -253,8 +253,8 @@ export default function HistorialProcedimientosScreen() {
             <div style={styles.emptyIcon}>🦷</div>
             <div style={styles.emptyText}>
               {procedimientos.length === 0 
-                ? 'No hay procedimientos registrados'
-                : 'No se encontraron procedimientos con los filtros seleccionados'
+                ? t('histProc.noProcedures')
+                : t('histProc.noResults')
               }
             </div>
           </div>
@@ -280,7 +280,7 @@ export default function HistorialProcedimientosScreen() {
                 </div>
 
                 <div style={styles.procNombre}>
-                  {proc.catalogo_procedimientos?.nombre_procedimiento || 'Procedimiento sin categoría'}
+                  {proc.catalogo_procedimientos?.nombre_procedimiento || t('histProc.uncategorized')}
                 </div>
 
                 {proc.diente && (
@@ -299,7 +299,7 @@ export default function HistorialProcedimientosScreen() {
                   <div style={styles.procCategoria}>
                     {proc.catalogo_procedimientos?.categoria || 'general'}
                   </div>
-                  <div style={styles.verMas}>Ver paciente →</div>
+                  <div style={styles.verMas}>{t('histProc.viewPatient')} →</div>
                 </div>
               </div>
             ))}
@@ -309,7 +309,7 @@ export default function HistorialProcedimientosScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

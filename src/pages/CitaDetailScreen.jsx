@@ -8,6 +8,8 @@ import { generarLinksConfirmacion } from '../utils/confirmacionLinks'
 import { useSuscripcion } from '../hooks/SuscripcionContext'
 import { useLimitesPlan } from '../hooks/useLimitesPlan'
 import UpgradeModal from '../components/UpgradeModal'
+import { useTranslation } from 'react-i18next'
+
 
 
 export default function CitaDetailScreen() {
@@ -25,6 +27,8 @@ export default function CitaDetailScreen() {
 
   // ✅ Contexto y límites
   const { isPremium } = useSuscripcion()
+  const { t, i18n } = useTranslation()
+
   const { verificar, limitInfo, showUpgrade, setShowUpgrade } = useLimitesPlan()
   const [upgradeTipo, setUpgradeTipo] = useState('emails')
 
@@ -86,7 +90,7 @@ export default function CitaDetailScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar cita')
+      alert(t('errors.loadError', { item: t('appointments.appointmentDetail') }))
       navigate('/calendario')
     } finally {
       setLoading(false)
@@ -114,14 +118,14 @@ export default function CitaDetailScreen() {
 
     const indice = parseInt(seleccion) - 1
     if (indice < 0 || indice >= estados.length) {
-      alert('⚠️ Opción inválida')
+      alert(t('citaDetail.invalidOption'))
       return
     }
 
     const nuevoEstado = estados[indice]
 
     if (nuevoEstado === cita.estado) {
-      alert('ℹ️ La cita ya tiene ese estado')
+      alert(t('citaDetail.alreadyHasStatus'))
       return
     }
 
@@ -136,18 +140,18 @@ export default function CitaDetailScreen() {
 
       if (error) throw error
 
-      alert(`✅ Estado actualizado a: ${estadosLabels[nuevoEstado]}`)
+      alert(t('appointments.statusUpdated', { status: t(`appointments.statuses.${nuevoEstado}`) }))
       loadCita()
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cambiar estado: ' + error.message)
+      alert(t('errors.saveError', { item: t('common.status') }) + ': ' + error.message)
     }
   }
 
   const eliminarCita = async () => {
     const confirmar = window.confirm(
-      '⚠️ ¿Estás seguro de eliminar esta cita?\n\nEsta acción no se puede deshacer.'
+      t('appointments.deleteConfirm')
     )
     
     if (!confirmar) return
@@ -160,12 +164,12 @@ export default function CitaDetailScreen() {
 
       if (error) throw error
 
-      alert('✅ Cita eliminada correctamente')
+      alert(t('appointments.appointmentDeleted'))
       navigate('/calendario')
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al eliminar cita: ' + error.message)
+      alert(t('errors.deleteError', { item: t('appointments.appointmentDetail') }) + ': ' + error.message)
     }
   }
 
@@ -180,7 +184,7 @@ export default function CitaDetailScreen() {
       }
 
       if (!paciente || !paciente.telefono) {
-        alert('⚠️ Este paciente no tiene teléfono registrado')
+        alert(t('appointments.noPhone'))
         return
       }
 
@@ -199,7 +203,7 @@ export default function CitaDetailScreen() {
 
       // Preparar fecha
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+      const fechaFormateada = fechaCita.toLocaleDateString(i18n.language, {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
@@ -241,14 +245,14 @@ export default function CitaDetailScreen() {
 
     } catch (error) {
       console.error('❌ Error completo:', error)
-      alert('❌ Error al enviar WhatsApp: ' + error.message)
+      alert(t('errors.sendError', { item: 'WhatsApp' }) + ': ' + error.message)
     }
   }
 
   const enviarRecordatorioEmail = async () => {
     try {
       if (!paciente || !paciente.email) {
-        alert('⚠️ Este paciente no tiene email registrado')
+        alert(t('appointments.noEmail'))
         return
       }
 
@@ -261,48 +265,49 @@ export default function CitaDetailScreen() {
       }
 
       const fechaCita = new Date(cita.fecha_cita + 'T12:00:00')
-      const fechaFormateada = fechaCita.toLocaleDateString('es-ES', {
+      const fechaFormateada = fechaCita.toLocaleDateString(i18n.language, {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
       })
 
+      // En enviarRecordatorioEmail, reemplazá el HTML:
       const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 32px;">🔔 Recordatorio de Cita</h1>
+            <h1 style="color: white; margin: 0; font-size: 32px;">🔔 ${t('emailTemplates.reminderTitle')}</h1>
           </div>
           
           <div style="padding: 40px 30px; background: white;">
-            <h2 style="color: #1f2937; margin-bottom: 20px;">¡No olvide su cita!</h2>
+            <h2 style="color: #1f2937; margin-bottom: 20px;">${t('emailTemplates.dontForget')}</h2>
             
             <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-              Hola <strong>${paciente.nombre}</strong>,
+              ${t('emailTemplates.reminderGreeting')} <strong>${paciente.nombre}</strong>,
             </p>
             
             <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-              Este es un recordatorio de su cita dental:
+              ${t('emailTemplates.reminderIntro')}
             </p>
             
             <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <p style="color: #92400e; margin: 5px 0;">
-                <strong>📅 Fecha:</strong> ${fechaFormateada}
+                <strong>📅 ${t('emailTemplates.reminderDate')}:</strong> ${fechaFormateada}
               </p>
               <p style="color: #92400e; margin: 5px 0;">
-                <strong>🕐 Hora:</strong> ${cita.hora_inicio.slice(0,5)}
+                <strong>🕐 ${t('emailTemplates.reminderTime')}:</strong> ${cita.hora_inicio.slice(0,5)}
               </p>
               <p style="color: #92400e; margin: 5px 0;">
-                <strong>📋 Motivo:</strong> ${cita.motivo || 'Consulta general'}
+                <strong>📋 ${t('emailTemplates.reminderReason')}:</strong> ${cita.motivo || t('appointments.generalConsult')}
               </p>
             </div>
             
             <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-              Por favor confirme su asistencia o avísenos si necesita reprogramar.
+              ${t('emailTemplates.reminderConfirm')}
             </p>
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               <p style="color: #6b7280; font-size: 14px; margin: 0;">
-                ¡Lo esperamos!<br>
+                ${t('emailTemplates.reminderFooter')}<br>
                 <strong>${dentistaInfo?.nombreRemitente || 'Equipo OdontoLog'}</strong>
               </p>
             </div>
@@ -327,13 +332,13 @@ export default function CitaDetailScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al preparar recordatorio: ' + error.message)
+      alert(t('errors.sendError', { item: 'email' }) + ': ' + error.message)
     }
   }
 
   const formatDate = (dateString) => {
     const date = new Date(dateString + 'T12:00:00')
-    return date.toLocaleDateString('es-ES', {
+      return date.toLocaleDateString(i18n.language, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -357,22 +362,14 @@ export default function CitaDetailScreen() {
     return colores[estado] || '#6b7280'
   }
 
-  const getEstadoLabel = (estado) => {
-    const labels = {
-      pendiente: 'Pendiente',
-      confirmada: 'Confirmada',
-      en_proceso: 'En Proceso',
-      completada: 'Completada',
-      cancelada: 'Cancelada',
-      no_asistio: 'No Asistió'
-    }
-    return labels[estado] || estado
+ const getEstadoLabel = (estado) => {
+    return t(`appointments.statuses.${estado}`, estado)
   }
 
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando cita...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -380,7 +377,7 @@ export default function CitaDetailScreen() {
   if (!cita) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cita no encontrada</div>
+        <div>{t('citaDetail.notFound')}</div>
       </div>
     )
   }
@@ -390,10 +387,10 @@ export default function CitaDetailScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/calendario')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📅 Detalle de Cita</div>
+          <div style={styles.title}>📅 {t('appointments.appointmentDetail')}</div>
           <div style={styles.subtitle}>
             {formatDate(cita.fecha_cita)}
           </div>
@@ -404,7 +401,7 @@ export default function CitaDetailScreen() {
       <div style={styles.content}>
         {/* Estado de la Cita */}
         <div style={styles.estadoCard}>
-          <div style={styles.estadoLabel}>Estado Actual</div>
+          <div style={styles.estadoLabel}>{t('citaDetail.currentStatus')}</div>
           <div style={{
             ...styles.estadoBadge,
             backgroundColor: getEstadoColor(cita.estado)
@@ -418,8 +415,8 @@ export default function CitaDetailScreen() {
               color: cita.estado === 'cancelada' ? '#ef4444' : '#10b981'
             }}>
               {cita.estado === 'cancelada' 
-                ? '❌ Cancelada por WhatsApp' 
-                : '✅ Confirmada por WhatsApp'
+                ? `❌ ${t('appointments.cancelledByWhatsApp')}` 
+                : `✅ ${t('appointments.confirmedByWhatsApp')}`
               }
             </div>
           )}
@@ -427,35 +424,35 @@ export default function CitaDetailScreen() {
 
         {/* Información de la Cita */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>⏰ Información de la Cita</div>
+          <div style={styles.sectionTitle}>⏰ {t('citaDetail.appointmentInfo')}</div>
           
           <div style={styles.infoRow}>
-            <span style={styles.infoLabel}>Fecha:</span>
+            <span style={styles.infoLabel}>{t('common.date')}:</span>
             <span style={styles.infoValue}>{formatDate(cita.fecha_cita)}</span>
           </div>
 
           <div style={styles.infoRow}>
-            <span style={styles.infoLabel}>Horario:</span>
+            <span style={styles.infoLabel}>{t('common.time')}:</span>
             <span style={styles.infoValue}>
               {formatTime(cita.hora_inicio)} - {formatTime(cita.hora_fin)}
             </span>
           </div>
 
           <div style={styles.infoRow}>
-            <span style={styles.infoLabel}>Motivo:</span>
+            <span style={styles.infoLabel}>{t('appointments.reason')}:</span>
             <span style={styles.infoValue}>{cita.motivo}</span>
           </div>
 
           {cita.tratamiento_planificado && (
             <div style={styles.infoRow}>
-              <span style={styles.infoLabel}>Tratamiento:</span>
+              <span style={styles.infoLabel}>{t('appointments.treatment')}:</span>
               <span style={styles.infoValue}>{cita.tratamiento_planificado}</span>
             </div>
           )}
 
           {cita.notas && (
             <div style={styles.notasBox}>
-              <div style={styles.notasLabel}>Notas:</div>
+              <div style={styles.notasLabel}>{t('common.notes')}:</div>
               <div style={styles.notasTexto}>{cita.notas}</div>
             </div>
           )}
@@ -463,7 +460,7 @@ export default function CitaDetailScreen() {
 
         {/* Información del Paciente */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>👤 Información del Paciente</div>
+          <div style={styles.sectionTitle}>👤 {t('citaDetail.patientInfo')}</div>
           
           <div style={styles.pacienteCard} onClick={() => navigate(`/paciente/${paciente.id}`)}>
             <div style={styles.pacienteAvatar}>
@@ -490,14 +487,14 @@ export default function CitaDetailScreen() {
 
         {/* Botones de Recordatorio */}
         <div style={styles.section}>
-          <div style={styles.sectionTitle}>📬 Enviar Recordatorio</div>
+          <div style={styles.sectionTitle}>📬 {t('appointments.sendReminder')}</div>
           
           <div style={styles.recordatorioButtons}>
             <button
               style={{...styles.actionButton, backgroundColor: '#3b82f6'}}
               onClick={enviarRecordatorioEmail}
             >
-              📧 Recordatorio por Email
+              📧 {t('appointments.reminderEmail')}
             </button>
 
             <button
@@ -507,12 +504,12 @@ export default function CitaDetailScreen() {
               }}
               onClick={enviarRecordatorioWhatsApp}
             >
-              📱 Recordatorio por WhatsApp {!isPremium && '⭐'}
+              {t('appointments.reminderWhatsApp')} {!isPremium && '⭐'}
             </button>
             
             {!isPremium && (
               <div style={styles.premiumHint}>
-                ⭐ WhatsApp disponible en planes Premium y Enterprise
+                ⭐ {t('billing.premiumFeature')}
               </div>
             )}
           </div>
@@ -524,14 +521,14 @@ export default function CitaDetailScreen() {
             style={styles.actionButton}
             onClick={cambiarEstado}
           >
-            🔄 Cambiar Estado
+            🔄 {t('appointments.changeStatus')}
           </button>
 
           <button
             style={{...styles.actionButton, backgroundColor: '#ef4444'}}
             onClick={eliminarCita}
           >
-            🗑️ Eliminar Cita
+            🗑️ {t('appointments.deleteAppointment')}
           </button>
         </div>
 

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,18 +34,18 @@ export default function ForgotPasswordScreen() {
       <div style={styles.container}>
         <div style={styles.card}>
           <div style={styles.successIcon}>✅</div>
-          <h1 style={styles.successTitle}>¡Correo Enviado!</h1>
+          <h1 style={styles.successTitle}>{t('forgot.emailSent')}</h1>
           <p style={styles.successText}>
-            Revisa tu bandeja de entrada en <strong>{email}</strong>
+            {t('forgot.checkInbox')} <strong>{email}</strong>
           </p>
           <p style={styles.successSubtext}>
-            Te enviamos un enlace para restablecer tu contraseña. El enlace expira en 1 hora.
+            {t('forgot.linkExpires')}
           </p>
           <button 
             onClick={() => navigate('/login')}
             style={styles.backToLoginButton}
           >
-            ← Volver al Login
+             ← {t('forgot.backToLogin')}
           </button>
         </div>
       </div>
@@ -57,20 +59,20 @@ export default function ForgotPasswordScreen() {
           onClick={() => navigate('/login')}
           style={styles.backButton}
         >
-          ← Volver
+          {t('common.back')}
         </button>
 
         <div style={styles.header}>
           <div style={styles.icon}>🔑</div>
-          <h1 style={styles.title}>¿Olvidaste tu contraseña?</h1>
+          <h1 style={styles.title}>{t('forgot.title')}</h1>
           <p style={styles.subtitle}>
-            No te preocupes, te enviaremos instrucciones para restablecerla
+            {t('forgot.subtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Correo Electrónico</label>
+            <label style={styles.label}>{t('common.email')}</label>
             <input
               type="email"
               value={email}
@@ -90,18 +92,18 @@ export default function ForgotPasswordScreen() {
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Enviando...' : '📧 Enviar Instrucciones'}
+            {loading ? t('forgot.sending') : `📧 ${t('forgot.sendInstructions')}`}
           </button>
         </form>
 
         <div style={styles.footer}>
           <p style={styles.footerText}>
-            ¿Recordaste tu contraseña?{' '}
+             {t('forgot.remembered')}{' '}
             <button 
               onClick={() => navigate('/login')}
               style={styles.footerLink}
             >
-              Inicia Sesión
+             {t('auth.login')}
             </button>
           </p>
         </div>

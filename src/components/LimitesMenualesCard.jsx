@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
 
 export function LimitesMenualesCard({ userProfile, plan }) {
   const [limites, setLimites] = useState({
@@ -11,6 +12,8 @@ export function LimitesMenualesCard({ userProfile, plan }) {
   })
 
   const [diasRestantes, setDiasRestantes] = useState(0)
+  const { t } = useTranslation()
+
 
   useEffect(() => {
     if (userProfile?.id && plan) {
@@ -99,19 +102,15 @@ export function LimitesMenualesCard({ userProfile, plan }) {
   }
 
   const getMesActual = () => {
-    const meses = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ]
     const ahora = new Date()
-    return `${meses[ahora.getMonth()]} ${ahora.getFullYear()}`
+    return ahora.toLocaleDateString(t('locale', { defaultValue: 'es-ES' }), { month: 'long', year: 'numeric' })
   }
 
   if (limites.loading) {
     return (
       <div style={styles.loadingCard}>
         <div style={styles.loadingIcon}>🔄</div>
-        <div style={styles.loadingText}>Cargando límites...</div>
+        <div style={styles.loadingText}>{t('common.loading')}</div>
       </div>
     )
   }
@@ -120,8 +119,8 @@ export function LimitesMenualesCard({ userProfile, plan }) {
     return (
       <div style={styles.errorCard}>
         <div style={styles.errorIcon}>⚠️</div>
-        <div style={styles.errorText}>Error cargando límites</div>
-        <button onClick={cargarLimitesDelMes} style={styles.retryButton}>Reintentar</button>
+        <div style={styles.errorText}>{t('errors.loadError', { item: 'límites' })}</div>
+        <button onClick={cargarLimitesDelMes} style={styles.retryButton}>{t('common.refresh')}</button>
       </div>
     )
   }
@@ -157,14 +156,14 @@ export function LimitesMenualesCard({ userProfile, plan }) {
     <div style={styles.card}>
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <span style={styles.title}>📊 Uso Mensual - {getMesActual()}</span>
+          <span style={styles.title}>{t('dashboard.monthlyUsage')} - {getMesActual()}</span>
           <span style={styles.planName}>Plan {plan.nombre}</span>
         </div>
         <div style={styles.headerRight}>
           <div style={styles.resetInfo}>
             <span style={styles.resetIcon}>🔄</span>
             <span style={styles.resetText}>
-              Resetea en {diasRestantes} día{diasRestantes !== 1 ? 's' : ''}
+              {t('dashboard.resetsIn', { days: diasRestantes })}
             </span>
           </div>
           <button onClick={cargarLimitesDelMes} style={styles.refreshButton} title="Actualizar datos">↻</button>
@@ -199,7 +198,7 @@ export function LimitesMenualesCard({ userProfile, plan }) {
               )}
 
               {item.limite > 0 && porcentaje >= 90 && (
-                <div style={styles.advertencia}>⚠️ Límite próximo</div>
+                <div style={styles.advertencia}>{t('dashboard.limitNear')}</div>
               )}
             </div>
           )
@@ -208,7 +207,7 @@ export function LimitesMenualesCard({ userProfile, plan }) {
 
       <div style={styles.footer}>
         <div style={styles.footerInfo}>
-          Los límites se resetean automáticamente el primer día de cada mes
+          {t('dashboard.limitsResetInfo')}
         </div>
         {plan.precio_mensual_usd > 0 && (
           <div style={styles.footerPrecio}>${plan.precio_mensual_usd}/mes</div>

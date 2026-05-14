@@ -1,0 +1,29 @@
+{
+  "appId": "lat.odontolog.app",
+  "appName": "OdontoLog",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 2000,
+      "backgroundColor": "#1E40AF"
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#1E40AF"
+    }
+  }
+}

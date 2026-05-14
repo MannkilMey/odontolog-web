@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import * as XLSX from 'xlsx'
+import { useTranslation } from 'react-i18next'
 
 export default function ExportarDatosScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   
   const [loading, setLoading] = useState(false)
   const [exportando, setExportando] = useState(false)
@@ -66,18 +68,18 @@ export default function ExportarDatosScreen() {
     // Validar que al menos una opción esté seleccionada
     const algunaSeleccionada = Object.values(opcionesExport).some(v => v)
     if (!algunaSeleccionada) {
-      alert('⚠️ Selecciona al menos una tabla para exportar')
+      alert(t('export.selectAtLeastOne'))
       return
     }
 
     // Validar fechas
     if (!fechaInicio || !fechaFin) {
-      alert('⚠️ Selecciona el rango de fechas')
+       alert(t('export.selectDateRange'))
       return
     }
 
     if (new Date(fechaInicio) > new Date(fechaFin)) {
-      alert('⚠️ La fecha de inicio no puede ser mayor que la fecha de fin')
+      alert(t('export.invalidDateRange'))
       return
     }
 
@@ -107,14 +109,14 @@ export default function ExportarDatosScreen() {
         if (pacientes && pacientes.length > 0) {
           const datosPacientes = pacientes.map((p, index) => ({
             'Nº': index + 1,
-            'Nombre': p.nombre || '',
-            'Apellido': p.apellido || '',
-            'Teléfono': p.telefono || '',
-            'Email': p.email || '',
-            'Dirección': p.direccion || '',
-            'Fecha Registro': p.created_at ? new Date(p.created_at).toLocaleDateString('es-ES') : '',
-            'Última Cita': p.ultima_cita?.fecha_cita ? new Date(p.ultima_cita.fecha_cita).toLocaleDateString('es-ES') : 'Sin citas',
-            'Notas': p.notas || ''
+            [t('patients.firstName')]: p.nombre || '',
+            [t('patients.lastName')]: p.apellido || '',
+            [t('common.phone')]: p.telefono || '',
+            [t('common.email')]: p.email || '',
+            [t('common.address')]: p.direccion || '',
+            [t('export.registrationDate')]: p.created_at ? new Date(p.created_at).toLocaleDateString(i18n.language) : '',
+            [t('export.lastAppointment')]: p.ultima_cita?.fecha_cita ? new Date(p.ultima_cita.fecha_cita).toLocaleDateString(i18n.language) : t('export.noAppointments'),
+            [t('common.notes')]: p.notas || ''
           }))
 
           const worksheet = XLSX.utils.json_to_sheet(datosPacientes)
@@ -132,7 +134,7 @@ export default function ExportarDatosScreen() {
             { wch: 40 }, // Notas
           ]
 
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Pacientes')
+          XLSX.utils.book_append_sheet(workbook, worksheet, t('patients.title'))
           totalRegistros += pacientes.length
           console.log(`✅ ${pacientes.length} pacientes exportados`)
         }
@@ -158,15 +160,15 @@ export default function ExportarDatosScreen() {
         if (citas && citas.length > 0) {
           const datosCitas = citas.map((c, index) => ({
             'Nº': index + 1,
-            'Fecha': c.fecha_cita ? new Date(c.fecha_cita).toLocaleDateString('es-ES') : '',
-            'Hora Inicio': c.hora_inicio || '',
-            'Hora Fin': c.hora_fin || '',
-            'Paciente': c.paciente ? `${c.paciente.nombre} ${c.paciente.apellido}` : '',
-            'Teléfono': c.paciente?.telefono || '',
-            'Motivo': c.motivo || '',
-            'Estado': c.estado || '',
-            'Monto': c.monto || 0,
-            'Notas': c.notas || ''
+            [t('common.date')]: c.fecha_cita ? new Date(c.fecha_cita).toLocaleDateString(i18n.language) : '',
+            [t('crearCita.startTime')]: c.hora_inicio || '',
+            [t('crearCita.endTime')]: c.hora_fin || '',
+            [t('appointments.patient')]: c.paciente ? `${c.paciente.nombre} ${c.paciente.apellido}` : '',
+            [t('common.phone')]: c.paciente?.telefono || '',
+            [t('appointments.reason')]: c.motivo || '',
+            [t('common.status')]: c.estado || '',
+            [t('export.amount')]: c.monto || 0,
+            [t('common.notes')]: c.notas || ''
           }))
 
           const worksheet = XLSX.utils.json_to_sheet(datosCitas)
@@ -184,7 +186,7 @@ export default function ExportarDatosScreen() {
             { wch: 40 }, // Notas
           ]
 
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Citas')
+          XLSX.utils.book_append_sheet(workbook, worksheet, t('nav.appointments'))
           totalRegistros += citas.length
           console.log(`✅ ${citas.length} citas exportadas`)
         }
@@ -211,14 +213,14 @@ export default function ExportarDatosScreen() {
         if (pagos && pagos.length > 0) {
           const datosPagos = pagos.map((p, index) => ({
             'Nº': index + 1,
-            'Fecha': p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-ES') : '',
-            'N° Recibo': p.numero_recibo || '',
-            'Paciente': p.paciente ? `${p.paciente.nombre} ${p.paciente.apellido}` : '',
-            'Concepto': p.concepto || '',
-            'Presupuesto': p.presupuesto?.numero_presupuesto || 'N/A',
-            'Monto': p.monto || 0,
-            'Método': p.metodo_pago || '',
-            'Notas': p.notas || ''
+            [t('common.date')]: p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString(i18n.language) : '',
+            [t('export.receiptNumber')]: p.numero_recibo || '',
+            [t('appointments.patient')]: p.paciente ? `${p.paciente.nombre} ${p.paciente.apellido}` : '',
+            [t('export.concept')]: p.concepto || '',
+            [t('export.budget')]: p.presupuesto?.numero_presupuesto || 'N/A',
+            [t('export.amount')]: p.monto || 0,
+            [t('export.method')]: p.metodo_pago || '',
+            [t('common.notes')]: p.notas || ''
           }))
 
           const worksheet = XLSX.utils.json_to_sheet(datosPagos)
@@ -235,7 +237,7 @@ export default function ExportarDatosScreen() {
             { wch: 40 }, // Notas
           ]
 
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Pagos')
+          XLSX.utils.book_append_sheet(workbook, worksheet, t('billing.payments'))
           totalRegistros += pagos.length
           console.log(`✅ ${pagos.length} pagos exportados`)
         }
@@ -266,16 +268,16 @@ export default function ExportarDatosScreen() {
 
             return {
               'Nº': index + 1,
-              'N° Presupuesto': pre.numero_presupuesto || '',
-              'Fecha Emisión': pre.fecha_emision ? new Date(pre.fecha_emision).toLocaleDateString('es-ES') : '',
-              'Paciente': pre.paciente ? `${pre.paciente.nombre} ${pre.paciente.apellido}` : '',
-              'Tratamientos': pre.tratamientos?.map(t => t.nombre).join(', ') || '',
-              'Total': pre.total || 0,
-              'Pagado': totalPagado,
-              'Saldo': saldoPendiente,
-              'Estado': pre.estado || '',
-              'Validez': pre.dias_validez ? `${pre.dias_validez} días` : '',
-              'Notas': pre.notas || ''
+              [t('export.budgetNumber')]: pre.numero_presupuesto || '',
+              [t('export.issueDate')]: pre.fecha_emision ? new Date(pre.fecha_emision).toLocaleDateString(i18n.language) : '',
+              [t('appointments.patient')]: pre.paciente ? `${pre.paciente.nombre} ${pre.paciente.apellido}` : '',
+              [t('export.treatments')]: pre.tratamientos?.map(t => t.nombre).join(', ') || '',
+              ['Total']: pre.total || 0,
+              [t('export.paid')]: totalPagado,
+              [t('cuentas.balance')]: saldoPendiente,
+              [t('common.status')]: pre.estado || '',
+              [t('export.validity')]: pre.dias_validez ? `${pre.dias_validez} ${t('common.days')}` : '',
+              [t('common.notes')]: pre.notas || ''
             }
           })
 
@@ -295,7 +297,7 @@ export default function ExportarDatosScreen() {
             { wch: 40 }, // Notas
           ]
 
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Presupuestos')
+          XLSX.utils.book_append_sheet(workbook, worksheet, t('billing.budgets'))
           totalRegistros += presupuestos.length
           console.log(`✅ ${presupuestos.length} presupuestos exportados`)
         }
@@ -325,18 +327,18 @@ export default function ExportarDatosScreen() {
 
             return {
               'Nº': index + 1,
-              'Fecha Inicio': plan.fecha_inicio ? new Date(plan.fecha_inicio).toLocaleDateString('es-ES') : '',
-              'Paciente': plan.paciente ? `${plan.paciente.nombre} ${plan.paciente.apellido}` : '',
-              'Concepto': plan.concepto || '',
-              'Monto Total': plan.monto_total || 0,
-              'Monto Cuota': plan.monto_cuota || 0,
-              'Cantidad Cuotas': plan.cantidad_cuotas || 0,
-              'Cuotas Pagadas': cuotasPagadas,
-              'Frecuencia': plan.frecuencia || '',
-              'Monto Pagado': plan.monto_pagado || 0,
-              'Saldo Pendiente': saldoPendiente,
-              'Estado': plan.estado || '',
-              'Notas': plan.notas || ''
+              [t('planPago.startDate')]: plan.fecha_inicio ? new Date(plan.fecha_inicio).toLocaleDateString(i18n.language) : '',
+              [t('appointments.patient')]: plan.paciente ? `${plan.paciente.nombre} ${plan.paciente.apellido}` : '',
+              [t('export.concept')]: plan.concepto || '',
+              [t('planPago.totalAmount')]: plan.monto_total || 0,
+              [t('export.installmentAmount')]: plan.monto_cuota || 0,
+              [t('planPago.installmentCount')]: plan.cantidad_cuotas || 0,
+              [t('export.paidInstallments')]: cuotasPagadas,
+              [t('planPago.frequency')]: plan.frecuencia || '',
+              [t('export.amountPaid')]: plan.monto_pagado || 0,
+              [t('export.pendingBalance')]: saldoPendiente,
+              [t('common.status')]: plan.estado || '',
+              [t('common.notes')]: plan.notas || ''
             }
           })
 
@@ -358,7 +360,7 @@ export default function ExportarDatosScreen() {
             { wch: 40 }, // Notas
           ]
 
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Planes de Pago')
+          XLSX.utils.book_append_sheet(workbook, worksheet, t('planPago.title'))
           totalRegistros += planes.length
           console.log(`✅ ${planes.length} planes exportados`)
         }
@@ -379,13 +381,13 @@ export default function ExportarDatosScreen() {
         if (tratamientos && tratamientos.length > 0) {
           const datosTratamientos = tratamientos.map((t, index) => ({
             'Nº': index + 1,
-            'Código': t.codigo || '',
-            'Nombre': t.nombre || '',
-            'Descripción': t.descripcion || '',
-            'Precio': t.precio || 0,
-            'Duración (min)': t.duracion_minutos || '',
-            'Categoría': t.categoria || '',
-            'Activo': t.activo ? 'Sí' : 'No'
+            [t('export.code')]: t.codigo || '',
+            [t('common.name')]: t.nombre || '',
+            [t('common.description')]: t.descripcion || '',
+            [t('export.price')]: t.precio || 0,
+            [t('export.durationMin')]: t.duracion_minutos || '',
+            [t('catalog.category')]: t.categoria || '',
+            [t('common.active')]: t.activo ? t('common.yes') : t('common.no')
           }))
 
           const worksheet = XLSX.utils.json_to_sheet(datosTratamientos)
@@ -401,7 +403,7 @@ export default function ExportarDatosScreen() {
             { wch: 10 }, // Activo
           ]
 
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Tratamientos')
+          XLSX.utils.book_append_sheet(workbook, worksheet, t('export.treatments'))
           totalRegistros += tratamientos.length
           console.log(`✅ ${tratamientos.length} tratamientos exportados`)
         }
@@ -412,7 +414,7 @@ export default function ExportarDatosScreen() {
       // ============================================
 
       if (totalRegistros === 0) {
-        alert('⚠️ No hay datos para exportar en el rango de fechas seleccionado')
+        alert(t('export.noData'))
         return
       }
 
@@ -435,11 +437,11 @@ export default function ExportarDatosScreen() {
       window.URL.revokeObjectURL(url)
 
       console.log(`✅ Archivo exportado: ${filename}`)
-      alert(`✅ Exportación completada!\n\n📊 Total registros: ${totalRegistros}\n📁 Archivo: ${filename}`)
+      alert(`✅ ${t('export.completed')}\n\n📊 ${t('export.totalRecords')}: ${totalRegistros}\n📁 ${t('export.file')}: ${filename}`)
 
     } catch (error) {
       console.error('Error exportando:', error)
-      alert('❌ Error al exportar datos:\n' + error.message)
+      alert(`❌ ${t('errors.generic')}:\n` + error.message)
     } finally {
       setExportando(false)
     }
@@ -450,11 +452,11 @@ export default function ExportarDatosScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+         {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>📊 Exportar Datos</div>
-          <div style={styles.subtitle}>Descarga tus datos en Excel</div>
+          <div style={styles.title}>📊 {t('export.title')}</div>
+          <div style={styles.subtitle}>{t('export.subtitle')}</div>
         </div>
         <div style={{ width: '80px' }} />
       </div>
@@ -464,22 +466,22 @@ export default function ExportarDatosScreen() {
         <div style={styles.infoCard}>
           <div style={styles.infoIcon}>ℹ️</div>
           <div style={styles.infoContent}>
-            <div style={styles.infoTitle}>¿Cómo funciona la exportación?</div>
+            <div style={styles.infoTitle}>{t('export.howItWorks')}</div>
             <div style={styles.infoText}>
-              Selecciona las tablas que deseas exportar y el rango de fechas. El sistema generará un archivo Excel (.xlsx) con múltiples hojas, una por cada tabla seleccionada.
+              {t('export.howItWorksDesc')}
             </div>
             <div style={styles.infoText}>
-              <strong>💡 Consejo:</strong> El archivo se puede abrir con Excel, Google Sheets o LibreOffice.
+                <strong>💡 {t('export.tip')}:</strong> {t('export.tipDesc')}
             </div>
           </div>
         </div>
 
         {/* Filtros de Fecha */}
         <div style={styles.fechasCard}>
-          <div style={styles.fechasTitle}>📅 Rango de Fechas</div>
+          <div style={styles.fechasTitle}>📅 {t('export.dateRange')}</div>
           <div style={styles.fechasGrid}>
             <div style={styles.fechaGroup}>
-              <label style={styles.fechaLabel}>Fecha Inicio:</label>
+              <label style={styles.fechaLabel}>{t('planPago.startDate')}:</label>
               <input
                 type="date"
                 style={styles.fechaInput}
@@ -488,7 +490,7 @@ export default function ExportarDatosScreen() {
               />
             </div>
             <div style={styles.fechaGroup}>
-              <label style={styles.fechaLabel}>Fecha Fin:</label>
+              <label style={styles.fechaLabel}>{t('export.endDate')}:</label>
               <input
                 type="date"
                 style={styles.fechaInput}
@@ -498,20 +500,20 @@ export default function ExportarDatosScreen() {
             </div>
           </div>
           <div style={styles.fechasInfo}>
-            ℹ️ Las fechas se aplican a: <strong>citas, pagos, presupuestos y planes de pago</strong>. Los pacientes y tratamientos se exportan completos.
+            ℹ️ {t('export.dateInfo')}
           </div>
         </div>
 
         {/* Selección de Tablas */}
         <div style={styles.tablasCard}>
           <div style={styles.tablasHeader}>
-            <div style={styles.tablasTitle}>📋 Seleccionar Tablas</div>
+            <div style={styles.tablasTitle}>📋{t('export.selectTables')}</div>
             <div style={styles.tablasButtons}>
               <button style={styles.selectAllButton} onClick={seleccionarTodo}>
-                ✓ Todas
+                ✓ {t('common.all')}
               </button>
               <button style={styles.selectNoneButton} onClick={deseleccionarTodo}>
-                ✕ Ninguna
+                ✕ {t('common.none')}
               </button>
             </div>
           </div>
@@ -529,8 +531,8 @@ export default function ExportarDatosScreen() {
                 {opcionesExport.pacientes ? '✓' : ''}
               </div>
               <div style={styles.opcionIcon}>👥</div>
-              <div style={styles.opcionLabel}>Pacientes</div>
-              <div style={styles.opcionDesc}>Lista completa con contactos</div>
+              <div style={styles.opcionLabel}>{t('patients.title')}</div>
+              <div style={styles.opcionDesc}>{t('export.patientsDesc')}</div>
             </div>
 
             {/* Citas */}
@@ -545,8 +547,8 @@ export default function ExportarDatosScreen() {
                 {opcionesExport.citas ? '✓' : ''}
               </div>
               <div style={styles.opcionIcon}>📅</div>
-              <div style={styles.opcionLabel}>Citas</div>
-              <div style={styles.opcionDesc}>Agenda y estado de citas</div>
+              <div style={styles.opcionLabel}>{t('nav.appointments')}</div>
+              <div style={styles.opcionDesc}>{t('export.appointmentsDesc')}</div>
             </div>
 
             {/* Pagos */}
@@ -561,8 +563,8 @@ export default function ExportarDatosScreen() {
                 {opcionesExport.pagos ? '✓' : ''}
               </div>
               <div style={styles.opcionIcon}>💰</div>
-              <div style={styles.opcionLabel}>Pagos</div>
-              <div style={styles.opcionDesc}>Historial de ingresos</div>
+              <div style={styles.opcionLabel}>{t('billing.payments')}</div>
+              <div style={styles.opcionDesc}>{t('export.paymentsDesc')}</div>
             </div>
 
             {/* Presupuestos */}
@@ -577,8 +579,8 @@ export default function ExportarDatosScreen() {
                 {opcionesExport.presupuestos ? '✓' : ''}
               </div>
               <div style={styles.opcionIcon}>📄</div>
-              <div style={styles.opcionLabel}>Presupuestos</div>
-              <div style={styles.opcionDesc}>Estado y saldo de presupuestos</div>
+              <div style={styles.opcionLabel}>{t('billing.budgets')}</div>
+              <div style={styles.opcionDesc}>{t('export.budgetsDesc')}</div>
             </div>
 
             {/* Planes de Pago */}
@@ -593,8 +595,8 @@ export default function ExportarDatosScreen() {
                 {opcionesExport.planesPago ? '✓' : ''}
               </div>
               <div style={styles.opcionIcon}>💳</div>
-              <div style={styles.opcionLabel}>Planes de Pago</div>
-              <div style={styles.opcionDesc}>Cuotas y cobranza</div>
+              <div style={styles.opcionLabel}>{t('planPago.title')}</div>
+              <div style={styles.opcionDesc}>{t('export.paymentPlansDesc')}</div>
             </div>
 
             {/* Tratamientos */}
@@ -609,8 +611,8 @@ export default function ExportarDatosScreen() {
                 {opcionesExport.tratamientos ? '✓' : ''}
               </div>
               <div style={styles.opcionIcon}>🦷</div>
-              <div style={styles.opcionLabel}>Tratamientos</div>
-              <div style={styles.opcionDesc}>Catálogo de servicios</div>
+              <div style={styles.opcionLabel}>{t('export.treatments')}</div>
+              <div style={styles.opcionDesc}>{t('export.treatmentsDesc')}</div>
             </div>
           </div>
         </div>
@@ -628,11 +630,11 @@ export default function ExportarDatosScreen() {
             {exportando ? (
               <>
                 <span style={styles.spinner}>⏳</span>
-                Exportando...
+                {t('export.exporting')}
               </>
             ) : (
               <>
-                📥 Exportar a Excel
+                📥 {t('export.exportToExcel')}
               </>
             )}
           </button>
@@ -641,7 +643,7 @@ export default function ExportarDatosScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

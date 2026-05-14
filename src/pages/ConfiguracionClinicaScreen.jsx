@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+
 
 export default function ConfiguracionClinicaScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   const [hasConfig, setHasConfig] = useState(false)
@@ -66,11 +69,11 @@ export default function ConfiguracionClinicaScreen() {
 
   const validateForm = () => {
     if (!formData.razon_social.trim()) {
-      alert('La razón social es requerida')
+      alert(t('errors.requiredField', { field: t('configClinica.legalName') }))
       return false
     }
     if (!formData.pais) {
-      alert('Debe seleccionar un país')
+      alert(t('errors.requiredField', { field: t('common.country') }))
       return false
     }
     return true
@@ -107,13 +110,18 @@ export default function ConfiguracionClinicaScreen() {
           onConflict: 'dentista_id'
         })
 
-      if (error) throw error
+       if (error) throw error
 
-      alert('✅ Configuración guardada correctamente')
+      // ✅ Aplicar idioma y moneda inmediatamente
+      localStorage.setItem('odontolog_idioma', formData.idioma)
+      localStorage.setItem('odontolog_moneda', formData.moneda)
+      i18n.changeLanguage(formData.idioma)
+
+      alert(t('settings.saved'))
       navigate('/dashboard')
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al guardar configuración: ' + error.message)
+      alert(t('errors.saveError', { item: t('settings.title') }) + ': ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -122,7 +130,7 @@ export default function ConfiguracionClinicaScreen() {
   if (checking) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Verificando configuración...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -132,14 +140,14 @@ export default function ConfiguracionClinicaScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+          {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
           <div style={styles.title}>
-            {hasConfig ? '⚙️ Configuración de Clínica' : '🏥 Configuración Inicial'}
+            {hasConfig ? `⚙️ ${t('configClinica.title')}` : `🏥 ${t('configClinica.initialSetup')}`}
           </div>
           <div style={styles.subtitle}>
-            {hasConfig ? 'Actualizar información' : 'Configura los datos de tu clínica'}
+            {hasConfig ? t('configClinica.updateInfo') : t('configClinica.setupDesc')}
           </div>
         </div>
         <div style={{ width: '80px' }} />
@@ -149,10 +157,9 @@ export default function ConfiguracionClinicaScreen() {
         {!hasConfig && (
           <div style={styles.welcomeCard}>
             <div style={styles.welcomeIcon}>👋</div>
-            <div style={styles.welcomeTitle}>¡Bienvenido a OdontoLog!</div>
+            <div style={styles.welcomeTitle}>{t('configClinica.welcomeTitle')}</div>
             <div style={styles.welcomeText}>
-              Para comenzar a generar presupuestos y recibos, necesitamos algunos datos de tu clínica.
-              Esta información aparecerá en todos tus documentos.
+             {t('configClinica.welcomeText')}
             </div>
           </div>
         )}
@@ -160,42 +167,42 @@ export default function ConfiguracionClinicaScreen() {
         <div style={styles.form}>
           {/* Datos Básicos */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>📋 Datos Básicos</div>
+            <div style={styles.sectionTitle}>📋  {t('configClinica.basicData')}</div>
             
-            <label style={styles.label}>Razón Social / Nombre Completo *</label>
+            <label style={styles.label}> {t('configClinica.legalName')}*</label>
             <input
               type="text"
               style={styles.input}
               value={formData.razon_social}
               onChange={(e) => updateField('razon_social', e.target.value)}
-              placeholder="Ej: Clínica Dental Salud Oral S.R.L."
+              placeholder={t('configClinica.legalNamePlaceholder')}
             />
 
-            <label style={styles.label}>Nombre Comercial (opcional)</label>
+            <label style={styles.label}>{t('settings.businessName')} ({t('common.optional')})</label>
             <input
               type="text"
               style={styles.input}
               value={formData.nombre_comercial}
               onChange={(e) => updateField('nombre_comercial', e.target.value)}
-              placeholder="Ej: Dental Salud"
+              placeholder={t('configClinica.businessNamePlaceholder')}
             />
 
             <div style={styles.row}>
               <div style={styles.halfWidth}>
-                <label style={styles.label}>Tipo de Documento</label>
+                <label style={styles.label}>{t('configClinica.docType')}</label>
                 <select
                   style={styles.select}
                   value={formData.tipo_documento_fiscal}
                   onChange={(e) => updateField('tipo_documento_fiscal', e.target.value)}
                 >
                   <option value="ruc">RUC</option>
-                  <option value="ci">Cédula de Identidad</option>
-                  <option value="otro">Otro</option>
+                  <option value="ci">{t('configClinica.idCard')}</option>
+                  <option value="otro">{t('configClinica.otherDoc')}</option>
                 </select>
               </div>
 
               <div style={styles.halfWidth}>
-                <label style={styles.label}>Número de Documento</label>
+                <label style={styles.label}>{t('configClinica.docNumber')}</label>
                 <input
                   type="text"
                   style={styles.input}
@@ -209,9 +216,9 @@ export default function ConfiguracionClinicaScreen() {
 
           {/* Datos de Contacto */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>📞 Datos de Contacto</div>
+            <div style={styles.sectionTitle}>📞 {t('configClinica.contactData')}</div>
 
-            <label style={styles.label}>Dirección Fiscal</label>
+            <label style={styles.label}>{t('configClinica.fiscalAddress')}</label>
             <textarea
               style={{...styles.input, ...styles.textArea}}
               value={formData.direccion_fiscal}
@@ -222,7 +229,7 @@ export default function ConfiguracionClinicaScreen() {
 
             <div style={styles.row}>
               <div style={styles.halfWidth}>
-                <label style={styles.label}>Teléfono</label>
+                <label style={styles.label}>{t('common.phone')}</label>
                 <input
                   type="tel"
                   style={styles.input}
@@ -233,7 +240,7 @@ export default function ConfiguracionClinicaScreen() {
               </div>
 
               <div style={styles.halfWidth}>
-                <label style={styles.label}>Email de Facturación</label>
+                <label style={styles.label}>{t('settings.billingEmail')}</label>
                 <input
                   type="email"
                   style={styles.input}
@@ -247,11 +254,11 @@ export default function ConfiguracionClinicaScreen() {
 
           {/* Configuración Regional */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>🌎 Configuración Regional</div>
+            <div style={styles.sectionTitle}>🌎 {t('configClinica.regionalConfig')}</div>
 
             <div style={styles.row}>
               <div style={styles.halfWidth}>
-                <label style={styles.label}>País *</label>
+                <label style={styles.label}>{t('common.country')} *</label>
                 <select
                   style={styles.select}
                   value={formData.pais}
@@ -275,17 +282,17 @@ export default function ConfiguracionClinicaScreen() {
                     }
                   }}
                 >
-                  <option value="PY">🇵🇾 Paraguay</option>
-                  <option value="AR">🇦🇷 Argentina</option>
-                  <option value="BR">🇧🇷 Brasil</option>
-                  <option value="US">🇺🇸 Estados Unidos</option>
-                  <option value="UY">🇺🇾 Uruguay</option>
-                  <option value="CL">🇨🇱 Chile</option>
+                  <option value="PY">🇵🇾 {t('countries.PY')}</option>
+                  <option value="AR">🇦🇷 {t('countries.AR')}</option>
+                  <option value="BR">🇧🇷 {t('countries.BR')}</option>
+                  <option value="US">🇺🇸 {t('countries.US')}</option>
+                  <option value="UY">🇺🇾 {t('countries.UY')}</option>
+                  <option value="CL">🇨🇱 {t('countries.CL')}</option>
                 </select>
               </div>
 
               <div style={styles.halfWidth}>
-                <label style={styles.label}>Moneda</label>
+                <label style={styles.label}>{t('settings.currency')}</label>
                 <div style={styles.monedaDisplay}>
                   <span style={styles.monedaSymbol}>{formData.simbolo_moneda}</span>
                   <span style={styles.monedaCode}>{formData.moneda}</span>
@@ -293,7 +300,7 @@ export default function ConfiguracionClinicaScreen() {
               </div>
             </div>
 
-            <label style={styles.label}>Idioma</label>
+            <label style={styles.label}>{t('settings.language')}</label>
             <select
               style={styles.select}
               value={formData.idioma}
@@ -307,9 +314,9 @@ export default function ConfiguracionClinicaScreen() {
 
           {/* Personalización */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>🎨 Personalización</div>
+            <div style={styles.sectionTitle}>🎨 {t('configClinica.customization')}</div>
 
-            <label style={styles.label}>Color Primario</label>
+            <label style={styles.label}>{t('configClinica.primaryColor')}</label>
             <div style={styles.colorPicker}>
               <input
                 type="color"
@@ -318,13 +325,13 @@ export default function ConfiguracionClinicaScreen() {
                 onChange={(e) => updateField('color_primario', e.target.value)}
               />
               <span style={styles.colorValue}>{formData.color_primario}</span>
-              <span style={styles.colorHelp}>Este color aparecerá en tus documentos</span>
+              <span style={styles.colorHelp}>{t('configClinica.colorHelp')}</span>
             </div>
           </div>
 
           {/* ✅ CONFIGURACIONES ADICIONALES SIMPLIFICADAS */}
           <div style={styles.section}>
-            <div style={styles.sectionTitle}>⚙️ Configuraciones Adicionales</div>
+            <div style={styles.sectionTitle}>⚙️ {t('configClinica.additionalConfig')}</div>
             
             <div style={styles.configGrid}>
               <button
@@ -333,9 +340,9 @@ export default function ConfiguracionClinicaScreen() {
               >
                 <div style={styles.configIcon}>🔔</div>
                 <div style={styles.configInfo}>
-                  <div style={styles.configTitle}>Notificaciones</div>
+                  <div style={styles.configTitle}>{t('notifications.title')}</div>
                   <div style={styles.configDescription}>
-                    Configurar recordatorios automáticos y envío de mensajes
+                    {t('configClinica.notificationsDesc')}
                   </div>
                 </div>
                 <div style={styles.configArrow}>→</div>
@@ -347,9 +354,9 @@ export default function ConfiguracionClinicaScreen() {
               >
                 <div style={styles.configIcon}>📋</div>
                 <div style={styles.configInfo}>
-                  <div style={styles.configTitle}>Catálogo de Procedimientos</div>
+                  <div style={styles.configTitle}>{t('catalog.title')}</div>
                   <div style={styles.configDescription}>
-                    Gestionar tratamientos y precios
+                    {t('dashboard.proceduresDesc')}
                   </div>
                 </div>
                 <div style={styles.configArrow}>→</div>
@@ -362,7 +369,7 @@ export default function ConfiguracionClinicaScreen() {
               onClick={() => navigate('/dashboard')}
               style={styles.cancelButton}
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
@@ -372,7 +379,7 @@ export default function ConfiguracionClinicaScreen() {
                 ...(loading && styles.saveButtonDisabled)
               }}
             >
-              {loading ? 'Guardando...' : hasConfig ? '💾 Guardar Cambios' : '🚀 Guardar y Continuar'}
+              {loading ? t('common.saving') : hasConfig ? `💾 ${t('common.save')}` : `🚀 ${t('configClinica.saveAndContinue')}`}
             </button>
           </div>
         </div>
@@ -380,7 +387,7 @@ export default function ConfiguracionClinicaScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

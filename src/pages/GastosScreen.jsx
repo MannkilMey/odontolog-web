@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTranslation } from 'react-i18next'
+import { useMoneda } from '../hooks/useMoneda'
 
 export default function GastosScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const { formatMoney } = useMoneda()
   const [loading, setLoading] = useState(true)
   const [gastos, setGastos] = useState([])
   const [config, setConfig] = useState(null)
@@ -23,16 +27,16 @@ export default function GastosScreen() {
   })
 
   const categorias = [
-    { value: 'materiales', label: 'Materiales Dentales', icon: '🦷' },
-    { value: 'equipamiento', label: 'Equipamiento', icon: '🔧' },
-    { value: 'servicios', label: 'Servicios', icon: '📋' },
-    { value: 'salarios', label: 'Salarios', icon: '👥' },
-    { value: 'alquiler', label: 'Alquiler', icon: '🏢' },
-    { value: 'servicios_publicos', label: 'Servicios Públicos', icon: '💡' },
-    { value: 'marketing', label: 'Marketing', icon: '📢' },
-    { value: 'impuestos', label: 'Impuestos', icon: '📊' },
-    { value: 'mantenimiento', label: 'Mantenimiento', icon: '🔨' },
-    { value: 'otros', label: 'Otros', icon: '📦' }
+    { value: 'materiales', label: t('gastos.categories.materials'), icon: '🦷' },
+    { value: 'equipamiento', label: t('gastos.categories.equipment'), icon: '🔧' },
+    { value: 'servicios', label: t('gastos.categories.services'), icon: '📋' },
+    { value: 'salarios', label: t('gastos.categories.salaries'), icon: '👥' },
+    { value: 'alquiler', label: t('gastos.categories.rent'), icon: '🏢' },
+    { value: 'servicios_publicos', label: t('gastos.categories.utilities'), icon: '💡' },
+    { value: 'marketing', label: t('gastos.categories.marketing'), icon: '📢' },
+    { value: 'impuestos', label: t('gastos.categories.taxes'), icon: '📊' },
+    { value: 'mantenimiento', label: t('gastos.categories.maintenance'), icon: '🔨' },
+    { value: 'otros', label: t('gastos.categories.other'), icon: '📦' }
   ]
 
   useEffect(() => {
@@ -65,7 +69,7 @@ export default function GastosScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al cargar datos')
+      alert(t('errors.loadError', { item: t('gastos.title') }))
     } finally {
       setLoading(false)
     }
@@ -111,12 +115,12 @@ export default function GastosScreen() {
 
   const handleSave = async () => {
     if (!formData.concepto.trim()) {
-      alert('El concepto es requerido')
+      alert(t('errors.requiredField', { field: t('gastos.concept') }))
       return
     }
 
     if (!formData.monto || parseFloat(formData.monto) <= 0) {
-      alert('El monto debe ser mayor a 0')
+      alert(t('gastos.amountError'))
       return
     }
 
@@ -143,14 +147,14 @@ export default function GastosScreen() {
           .eq('id', editingItem.id)
 
         if (error) throw error
-        alert('✅ Gasto actualizado')
+        alert(`✅ ${t('gastos.updated')}`)
       } else {
         const { error } = await supabase
           .from('gastos_clinica')
           .insert(dataToSave)
 
         if (error) throw error
-        alert('✅ Gasto registrado')
+        alert(`✅ ${t('gastos.added')}`)
       }
 
       closeModal()
@@ -158,12 +162,12 @@ export default function GastosScreen() {
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al guardar: ' + error.message)
+      alert(t('errors.saveError', { item: t('gastos.title') }) + ': ' + error.message)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de eliminar este gasto?')) {
+    if (!window.confirm(t('gastos.deleteConfirm'))) {
       return
     }
 
@@ -174,21 +178,18 @@ export default function GastosScreen() {
         .eq('id', id)
 
       if (error) throw error
-      alert('✅ Gasto eliminado')
+      alert(`✅ ${t('gastos.deleted')}`)
       loadData()
 
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al eliminar: ' + error.message)
+      alert(t('errors.deleteError', { item: t('gastos.title') }) + ': ' + error.message)
     }
   }
 
-  const formatMoney = (value) => {
-    return `${config?.simbolo_moneda || 'Gs.'} ${Number(value).toLocaleString('es-PY')}`
-  }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+    return new Date(dateString).toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -227,7 +228,7 @@ export default function GastosScreen() {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div>Cargando gastos...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -237,14 +238,14 @@ export default function GastosScreen() {
       {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          ← Volver
+         {t('common.back')}
         </button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>💸 Gastos de la Clínica</div>
-          <div style={styles.subtitle}>{gastos.length} gastos registrados</div>
+          <div style={styles.title}>💸 {t('gastos.title')}</div>
+          <div style={styles.subtitle}>{t('gastos.count', { count: gastos.length })}</div>
         </div>
         <button onClick={() => openModal()} style={styles.addButton}>
-          + Nuevo Gasto
+          + {t('gastos.newExpense')}
         </button>
       </div>
 
@@ -252,15 +253,15 @@ export default function GastosScreen() {
         {/* Estadísticas */}
         <div style={styles.statsContainer}>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Gastos</div>
+            <div style={styles.statLabel}>{t('gastos.totalExpenses')}</div>
             <div style={styles.statValue}>{formatMoney(stats.totalGastos)}</div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Este Mes</div>
+            <div style={styles.statLabel}>{t('equipo.thisMonth')}</div>
             <div style={styles.statValue}>{formatMoney(stats.gastosMes)}</div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Categorías</div>
+            <div style={styles.statLabel}>{t('gastos.categoriesLabel')}</div>
             <div style={styles.statValue}>{Object.keys(stats.porCategoria).length}</div>
           </div>
         </div>
@@ -274,7 +275,7 @@ export default function GastosScreen() {
             }}
             onClick={() => setFiltroCategoria('todos')}
           >
-            Todos ({gastos.length})
+            {t('common.all')} ({gastos.length})
           </button>
           {categorias.map(cat => {
             const count = gastos.filter(g => g.categoria === cat.value).length
@@ -300,15 +301,15 @@ export default function GastosScreen() {
             <div style={styles.emptyIcon}>💸</div>
             <div style={styles.emptyText}>
               {filtroCategoria === 'todos' 
-                ? 'No hay gastos registrados'
-                : 'No hay gastos en esta categoría'
+                ? t('gastos.noExpenses')
+                : t('gastos.noExpensesCategory')
               }
             </div>
             <button 
               style={styles.emptyButton}
               onClick={() => openModal()}
             >
-              + Registrar Primer Gasto
+              + {t('gastos.addFirst')}
             </button>
           </div>
         ) : (
@@ -354,7 +355,7 @@ export default function GastosScreen() {
                       style={styles.editButton}
                       onClick={() => openModal(gasto)}
                     >
-                      ✎ Editar
+                      ✎ {t('common.edit')}
                     </button>
                     <button
                       style={styles.deleteButton}
@@ -376,7 +377,7 @@ export default function GastosScreen() {
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div style={styles.modalTitle}>
-                {editingItem ? '✎ Editar Gasto' : '+ Nuevo Gasto'}
+                 {editingItem ? `✎ ${t('gastos.editExpense')}` : `+ ${t('gastos.newExpense')}`}
               </div>
               <button onClick={closeModal} style={styles.modalClose}>✕</button>
             </div>
@@ -384,7 +385,7 @@ export default function GastosScreen() {
             <div style={styles.modalBody}>
               <div style={styles.row}>
                 <div style={styles.field}>
-                  <label style={styles.label}>Fecha *</label>
+                  <label style={styles.label}>{t('common.date')} *</label>
                   <input
                     type="date"
                     style={styles.input}
@@ -394,7 +395,7 @@ export default function GastosScreen() {
                 </div>
 
                 <div style={styles.field}>
-                  <label style={styles.label}>Categoría *</label>
+                  <label style={styles.label}>{t('catalog.category')} *</label>
                   <select
                     style={styles.select}
                     value={formData.categoria}
@@ -409,16 +410,16 @@ export default function GastosScreen() {
                 </div>
               </div>
 
-              <label style={styles.label}>Concepto *</label>
+              <label style={styles.label}>{t('gastos.concept')} *</label>
               <input
                 type="text"
                 style={styles.input}
-                placeholder="Ej: Compra de anestesia, Pago de alquiler"
+                placeholder={t('gastos.conceptPlaceholder')}
                 value={formData.concepto}
                 onChange={(e) => updateFormField('concepto', e.target.value)}
               />
 
-              <label style={styles.label}>Monto *</label>
+              <label style={styles.label}>{t('export.amount')} *</label>
               <div style={styles.montoInput}>
                 <span style={styles.montoSymbol}>{config?.simbolo_moneda || 'Gs.'}</span>
                 <input
@@ -434,18 +435,18 @@ export default function GastosScreen() {
 
               <div style={styles.row}>
                 <div style={styles.field}>
-                  <label style={styles.label}>Proveedor (opcional)</label>
+                  <label style={styles.label}>{t('gastos.supplier')} ({t('common.optional')})</label>
                   <input
                     type="text"
                     style={styles.input}
-                    placeholder="Nombre del proveedor"
+                    placeholder={t('gastos.supplierPlaceholder')}
                     value={formData.proveedor}
                     onChange={(e) => updateFormField('proveedor', e.target.value)}
                   />
                 </div>
 
                 <div style={styles.field}>
-                  <label style={styles.label}>N° Factura (opcional)</label>
+                  <label style={styles.label}>{t('gastos.invoiceNumber')} ({t('common.optional')})</label>
                   <input
                     type="text"
                     style={styles.input}
@@ -456,20 +457,20 @@ export default function GastosScreen() {
                 </div>
               </div>
 
-              <label style={styles.label}>Método de Pago</label>
+              <label style={styles.label}>{t('gastos.paymentMethod')}</label>
               <select
                 style={styles.select}
                 value={formData.metodo_pago}
                 onChange={(e) => updateFormField('metodo_pago', e.target.value)}
               >
-                <option value="efectivo">💵 Efectivo</option>
-                <option value="transferencia">🏦 Transferencia</option>
-                <option value="tarjeta">💳 Tarjeta</option>
-                <option value="cheque">📝 Cheque</option>
-                <option value="otro">💰 Otro</option>
+                <option value="efectivo">💵 {t('gastos.methods.cash')}</option>
+                <option value="transferencia">🏦 {t('gastos.methods.transfer')}</option>
+                <option value="tarjeta">💳 {t('gastos.methods.card')}</option>
+                <option value="cheque">📝 {t('gastos.methods.check')}</option>
+                <option value="otro">💰 {t('gastos.methods.other')}</option>
               </select>
 
-              <label style={styles.label}>Notas (opcional)</label>
+              <label style={styles.label}>{t('common.notes')} ({t('common.optional')})</label>
               <textarea
                 style={{...styles.input, ...styles.textArea}}
                 placeholder="Notas adicionales..."
@@ -481,10 +482,10 @@ export default function GastosScreen() {
 
             <div style={styles.modalFooter}>
               <button onClick={closeModal} style={styles.cancelButton}>
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button onClick={handleSave} style={styles.saveButton}>
-                {editingItem ? '💾 Guardar Cambios' : '+ Registrar Gasto'}
+                {editingItem ? `💾 ${t('common.save')}` : `+ ${t('gastos.registerExpense')}`}
               </button>
             </div>
           </div>
@@ -493,7 +494,7 @@ export default function GastosScreen() {
 
       {/* Footer */}
       <div style={styles.footer}>
-        <div style={styles.footerText}>Diseñado por MCorp</div>
+        <div style={styles.footerText}>{t('common.poweredBy')}</div>
       </div>
     </div>
   )

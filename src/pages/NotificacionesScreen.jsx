@@ -1,9 +1,11 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSuscripcion } from '../hooks/SuscripcionContext'
+import { useSuscripcion } from '../hooks/SuscripcionContext'
 
 export default function NotificacionesScreen() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   
   const { 
     userProfile, 
@@ -67,13 +69,13 @@ export default function NotificacionesScreen() {
     const diffHoras = Math.floor(diffMs / 3600000)
     const diffDias = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1) return 'Ahora mismo'
-    if (diffMins < 60) return `Hace ${diffMins} min`
-    if (diffHoras < 24) return `Hace ${diffHoras}h`
-    if (diffDias === 1) return 'Ayer'
-    if (diffDias < 7) return `Hace ${diffDias} días`
-    
-    return notifFecha.toLocaleDateString('es-ES', { 
+    if (diffMins < 1) return t('notificaciones.timeJustNow')
+    if (diffMins < 60) return t('notificaciones.timeMinutes', { count: diffMins })
+    if (diffHoras < 24) return t('notificaciones.timeHours', { count: diffHoras })
+    if (diffDias === 1) return t('common.yesterday')
+    if (diffDias < 7) return t('notificaciones.timeDays', { count: diffDias })
+
+    return notifFecha.toLocaleDateString(i18n.language, { 
       day: 'numeric', 
       month: 'short',
       hour: '2-digit',
@@ -85,7 +87,7 @@ export default function NotificacionesScreen() {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.loadingSpinner}>🔄</div>
-        <div style={styles.loadingText}>Cargando notificaciones...</div>
+        <div style={styles.loadingText}>{t('notificaciones.loading')}</div>
       </div>
     )
   }
@@ -94,9 +96,9 @@ export default function NotificacionesScreen() {
     return (
       <div style={styles.loadingContainer}>
         <div style={styles.errorIcon}>⚠️</div>
-        <div style={styles.errorTitle}>Error: Usuario no encontrado</div>
+        <div style={styles.errorTitle}>{t('notificaciones.userNotFound')}</div>
         <button onClick={() => navigate('/dashboard')} style={styles.backButton}>
-          Volver al Dashboard
+          {t('notificaciones.backToDashboard')}
         </button>
       </div>
     )
@@ -106,21 +108,20 @@ export default function NotificacionesScreen() {
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <button onClick={() => navigate('/dashboard')} style={styles.backButton}>← Volver</button>
+          <button onClick={() => navigate('/dashboard')} style={styles.backButton}>{t('common.back')}</button>
           <div style={styles.headerInfo}>
-            <div style={styles.title}>🔔 Notificaciones</div>
-            <div style={styles.subtitle}>Funcionalidad Premium</div>
+            <div style={styles.title}>{t('notificaciones.title')}</div>
+            <div style={styles.subtitle}>{t('notifications.premiumRequired')}</div>
           </div>
         </div>
         <div style={styles.premiumRequired}>
           <div style={styles.premiumIcon}>⭐</div>
-          <div style={styles.premiumTitle}>Actualiza a Premium</div>
+          <div style={styles.premiumTitle}>{t('notificaciones.premiumTitle')}</div>
           <div style={styles.premiumText}>
-            Las notificaciones automáticas son una funcionalidad exclusiva para usuarios Premium.
-            Actualiza tu plan para recibir alertas de citas, mensajes y recordatorios.
+            {t('notificaciones.premiumText')}
           </div>
           <button onClick={() => navigate('/planes')} style={styles.upgradeButton}>
-            Ver Planes Premium
+            {t('notificaciones.viewPlans')}
           </button>
         </div>
       </div>
@@ -131,17 +132,17 @@ export default function NotificacionesScreen() {
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <button onClick={() => navigate('/dashboard')} style={styles.backButton}>← Volver</button>
+          <button onClick={() => navigate('/dashboard')} style={styles.backButton}>{t('common.back')}</button>
           <div style={styles.headerInfo}>
-            <div style={styles.title}>🔔 Notificaciones</div>
-            <div style={styles.subtitle}>Error de conexión</div>
+            <div style={styles.title}>{t('notificaciones.title')}</div>
+            <div style={styles.subtitle}>{t('errors.networkError')}</div>
           </div>
         </div>
         <div style={styles.errorContainer}>
           <div style={styles.errorIcon}>⚠️</div>
-          <div style={styles.errorTitle}>Error cargando notificaciones</div>
+          <div style={styles.errorTitle}>{t('errors.loadError', { item: t('nav.notifications') })}</div>
           <div style={styles.errorText}>{notifError}</div>
-          <button onClick={refreshNotificaciones} style={styles.retryButton}>🔄 Reintentar</button>
+          <button onClick={refreshNotificaciones} style={styles.retryButton}>🔄 {t('notificaciones.retry')}</button>
         </div>
       </div>
     )
@@ -150,20 +151,20 @@ export default function NotificacionesScreen() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => navigate('/dashboard')} style={styles.backButton}>← Volver</button>
+        <button onClick={() => navigate('/dashboard')} style={styles.backButton}>{t('common.back')}</button>
         <div style={styles.headerInfo}>
-          <div style={styles.title}>🔔 Notificaciones</div>
+          <div style={styles.title}>{t('notificaciones.title')}</div>
           <div style={styles.subtitle}>
             {noLeidas > 0 
-              ? `${noLeidas} sin leer de ${notificaciones.length} total` 
-              : `${notificaciones.length} notificaciones - Todo al día`}
+              ? t('notificaciones.subtitleUnread', { unread: noLeidas, total: notificaciones.length })
+              : t('notificaciones.subtitleAllRead', { total: notificaciones.length })}
           </div>
         </div>
         <div style={styles.headerActions}>
-          <button onClick={refreshNotificaciones} style={styles.refreshButton} title="Actualizar">🔄</button>
+          <button onClick={refreshNotificaciones} style={styles.refreshButton} title={t('common.refresh')}>🔄</button>
           {noLeidas > 0 && (
-            <button onClick={marcarTodasComoLeidas} style={styles.marcarTodoButton} title="Marcar todas como leídas">
-              ✓ Marcar todo
+            <button onClick={marcarTodasComoLeidas} style={styles.marcarTodoButton} title={t('notifications.markAllRead')}>
+              ✓ {t('notificaciones.markAll')}
             </button>
           )}
         </div>
@@ -173,14 +174,13 @@ export default function NotificacionesScreen() {
         {notificaciones.length === 0 ? (
           <div style={styles.emptyState}>
             <div style={styles.emptyIcon}>🔔</div>
-            <div style={styles.emptyTitle}>No hay notificaciones</div>
+            <div style={styles.emptyTitle}>{t('notifications.noNotifications')}</div>
             <div style={styles.emptyText}>
-              Cuando los pacientes confirmen o cancelen citas, recibas mensajes o se venzan pagos, 
-              verás las notificaciones aquí.
+              {t('notificaciones.emptyText')}
             </div>
             <div style={styles.emptyActions}>
               <button onClick={() => navigate('/configuracion-notificaciones')} style={styles.configButton}>
-                ⚙️ Configurar Notificaciones
+                ⚙️ {t('notificaciones.configNotifications')}
               </button>
             </div>
           </div>
@@ -205,7 +205,7 @@ export default function NotificacionesScreen() {
                   <div style={styles.notificacionContent}>
                     <div style={styles.notificacionTitulo}>
                       {notif.titulo}
-                      {!notif.leida && <span style={styles.badgeNoLeida}>NUEVO</span>}
+                      {!notif.leida && <span style={styles.badgeNoLeida}>{t('common.new').toUpperCase()}</span>}
                     </div>
                     <div style={styles.notificacionMensaje}>{notif.mensaje}</div>
                     <div style={styles.notificacionMeta}>
@@ -221,7 +221,7 @@ export default function NotificacionesScreen() {
                       <button
                         onClick={(e) => { e.stopPropagation(); marcarComoLeida(notif.id) }}
                         style={styles.markReadButton}
-                        title="Marcar como leída"
+                        title={t('notificaciones.markRead')}
                       >
                         ✓
                       </button>
@@ -229,7 +229,7 @@ export default function NotificacionesScreen() {
                     <button
                       onClick={(e) => { e.stopPropagation(); eliminarNotificacion(notif.id) }}
                       style={styles.deleteButton}
-                      title="Marcar como leída"
+                      title={t('notificaciones.markRead')}
                     >
                       ✕
                     </button>
@@ -250,8 +250,8 @@ export default function NotificacionesScreen() {
       </div>
 
       <div style={styles.footer}>
-        <div style={styles.footerInfo}>Premium activo • {notificaciones.length} notificaciones cargadas</div>
-        <div style={styles.footerText}>OdontoLog • Diseñado por MCorp</div>
+        <div style={styles.footerInfo}>{t('notificaciones.footerInfo', { count: notificaciones.length })}</div>
+        <div style={styles.footerText}>{t('common.footerBrand')} • {t('common.poweredBy')}</div>
       </div>
     </div>
   )
