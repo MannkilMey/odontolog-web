@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import i18n from '../i18n' // ajusta el path según tu configuración
+import i18n from '../i18n/config'
 
 // ─── Helpers de idioma ───────────────────────────────────────────────────────
 const getLang = (config) => config?.idioma || 'es'

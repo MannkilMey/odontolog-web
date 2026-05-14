@@ -1,7 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSuscripcion } from '../hooks/SuscripcionContext'
-import { useSuscripcion } from '../hooks/SuscripcionContext'
 
 export default function NotificacionesScreen() {
   const navigate = useNavigate()
