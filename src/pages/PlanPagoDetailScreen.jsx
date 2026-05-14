@@ -188,7 +188,7 @@ export default function PlanPagoDetailScreen() {
 
       const descargarPDF = window.confirm(t('planPagoDetail.confirmDownloadPDF'))
       if (descargarPDF) {
-        await generarReciboPDF(pagoRegistrado, paciente, config)
+        await generarReciboPDF(pagoRegistrado, paciente, config, t, i18n.language)
       }
 
       setShowReciboModal(false)
@@ -393,7 +393,7 @@ ${config?.telefono ? `Tel: ${config.telefono}` : ''}`
       const { data: pago, error: pagoError } = await supabase
         .from('pagos_pacientes').select('*').eq('id', cuota.pago_id).single()
       if (pagoError) throw pagoError
-      await generarReciboPDF(pago, paciente, config)
+      await generarReciboPDF(pago, paciente, config, t, i18n.language)
     } catch (error) {
       console.error('Error:', error)
       alert(t('planPagoDetail.errorGeneratingReceipt'))

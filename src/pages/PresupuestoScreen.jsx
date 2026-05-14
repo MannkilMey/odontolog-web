@@ -9,7 +9,7 @@ export default function PresupuestoScreen() {
   const { pacienteId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { formatMoney } = useMoneda()
 
   const [paciente, setPaciente] = useState(null)
@@ -192,7 +192,7 @@ export default function PresupuestoScreen() {
       )
 
       if (descargarPDF) {
-        await generarPresupuestoPDF(presupuesto, formData.items, paciente, config)
+        await generarPresupuestoPDF(presupuesto, formData.items, paciente, config, t, i18n.language)
       }
 
       navigate(`/paciente/${pacienteId}`)

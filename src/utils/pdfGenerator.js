@@ -1,10 +1,5 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import i18n from 'i18next'
-
-// ─── Helpers de idioma ───────────────────────────────────────────────────────
-const getLang = (config) => config?.idioma || 'es'
-const getT    = (config) => i18n.getFixedT(getLang(config))
 
 // ─── Helpers de formato ──────────────────────────────────────────────────────
 const formatMoney = (value, simbolo = 'Gs.', lang = 'es') =>
@@ -22,12 +17,10 @@ const formatDate = (dateString, lang = 'es') => {
 // ─────────────────────────────────────────────────────────────────────────────
 // PRESUPUESTO PDF
 // ─────────────────────────────────────────────────────────────────────────────
-export const generarPresupuestoPDF = async (presupuesto, items, paciente, config) => {
-  const doc      = new jsPDF()
+export const generarPresupuestoPDF = async (presupuesto, items, paciente, config, t, lang) => {
+  const doc        = new jsPDF()
   const pageWidth  = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const t    = getT(config)
-  const lang = getLang(config)
 
   const primaryColor = config.color_primario || '#1E40AF'
   const hexToRgb = (hex) => {
@@ -116,7 +109,7 @@ export const generarPresupuestoPDF = async (presupuesto, items, paciente, config
       : ''),
     item.cantidad.toString(),
     formatMoney(item.precio_unitario, config.simbolo_moneda, lang),
-    formatMoney(item.subtotal, config.simbolo_moneda, lang)
+    formatMoney(item.subtotal,        config.simbolo_moneda, lang)
   ])
 
   autoTable(doc, {
@@ -193,12 +186,10 @@ export const generarPresupuestoPDF = async (presupuesto, items, paciente, config
 // ─────────────────────────────────────────────────────────────────────────────
 // RECIBO PDF
 // ─────────────────────────────────────────────────────────────────────────────
-export const generarReciboPDF = async (pago, paciente, config) => {
-  const doc      = new jsPDF()
+export const generarReciboPDF = async (pago, paciente, config, t, lang) => {
+  const doc        = new jsPDF()
   const pageWidth  = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const t    = getT(config)
-  const lang = getLang(config)
 
   const primaryColor = config.color_primario || '#10B981'
   const hexToRgb = (hex) => {

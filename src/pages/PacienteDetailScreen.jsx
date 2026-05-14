@@ -172,7 +172,7 @@ export default function PacienteDetailScreen() {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: config } = await supabase
         .from('configuracion_clinica').select('*').eq('dentista_id', user.id).single()
-      await generarPresupuestoPDF(presupuesto, items, paciente, config)
+      await generarPresupuestoPDF(presupuesto, items, paciente, config, t, i18n.language)
     } catch (error) {
       console.error('Error:', error)
       alert(t('pacienteDetail.errorPDF'))
@@ -316,7 +316,7 @@ export default function PacienteDetailScreen() {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: config } = await supabase
         .from('configuracion_clinica').select('*').eq('dentista_id', user.id).single()
-      await generarReciboPDF(pago, paciente, config)
+      await generarReciboPDF(pago, paciente, config, t, i18n.language)
     } catch (error) {
       console.error('Error:', error)
       alert(t('pacienteDetail.errorPDF'))

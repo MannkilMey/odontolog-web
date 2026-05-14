@@ -208,7 +208,7 @@ export default function RegistrarPagoScreen() {
       if (enviarPor.whatsapp && paciente.telefono) await enviarReciboWhatsApp(pagoRegistrado, paciente, config, user.id)
 
       const descargarPDF = window.confirm(t('planPagoDetail.confirmDownloadPDF'))
-      if (descargarPDF) await generarReciboPDF(pagoRegistrado, paciente, config)
+      if (descargarPDF) await generarReciboPDF(pagoRegistrado, paciente, config, t, i18n.language)
 
       setShowReciboModal(false)
       navigate(`/paciente/${pacienteId}`)
