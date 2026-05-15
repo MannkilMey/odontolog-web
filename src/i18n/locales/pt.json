@@ -444,7 +444,9 @@
     "clinicPlaceholder": "Nome da sua clínica",
     "passwordPlaceholder": "Mínimo 6 caracteres",
     "createAccount": "Criar Conta",
-    "successMessage": "Conta criada! Verifique seu e-mail para confirmar."
+    "successMessage": "Conta criada! Verifique seu e-mail para confirmar.",
+    "phoneInvalid": "Digite um número de telefone válido",
+    "phoneHint": "Ex: {{ejemplo}}"
   },
   "emailTemplates": {
     "reminderTitle": "Lembrete de Consulta",

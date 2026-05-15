@@ -445,7 +445,9 @@
     "clinicPlaceholder": "Your clinic name",
     "passwordPlaceholder": "Minimum 6 characters",
     "createAccount": "Create Account",
-    "successMessage": "Account created! Check your email to confirm."
+    "successMessage": "Account created! Check your email to confirm.",
+    "phoneInvalid": "Enter a valid phone number",
+    "phoneHint": "E.g.: {{ejemplo}}"
   },
   "emailTemplates": {
     "reminderTitle": "Appointment Reminder",
