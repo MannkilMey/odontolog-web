@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 
@@ -63,11 +63,15 @@ function App() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const currentUserIdRef      = useRef(null)
-  const locationRef           = useRef(location.pathname)   // ✅ NUEVO
-  const isPasswordRecoveryRef = useRef(false)               // ✅ NUEVO
+  const currentUserIdRef = useRef(null)
+  const locationRef      = useRef(location.pathname)
 
-  // ✅ Mantener locationRef siempre actualizado
+  // ✅ FIX 1: Detectar recovery desde el hash de la URL ANTES de cualquier evento
+  const isPasswordRecoveryRef = useRef(
+    typeof window !== 'undefined' &&
+    window.location.hash.includes('type=recovery')
+  )
+
   useEffect(() => {
     locationRef.current = location.pathname
   }, [location.pathname])
@@ -107,7 +111,7 @@ function App() {
           break
 
         case 'SIGNED_IN':
-          // ✅ Si venimos de recovery, no redirigir — solo setear sesión
+          // ✅ Si venimos de recovery, solo setear sesión — nunca redirigir
           if (isPasswordRecoveryRef.current) {
             currentUserIdRef.current = newUserId
             setSession(newSession)
@@ -119,7 +123,6 @@ function App() {
             setSession(newSession)
             loadClinicConfig(newUserId)
 
-            // ✅ locationRef.current siempre tiene el pathname actual
             if (locationRef.current === '/login' && newSession) {
               if (newSession.user.email === 'president@odontolog.lat') {
                 navigate('/admin', { replace: true })
@@ -132,6 +135,7 @@ function App() {
 
         case 'SIGNED_OUT':
           currentUserIdRef.current = null
+          isPasswordRecoveryRef.current = false
           setSession(null)
           navigate('/login')
           break
@@ -144,20 +148,19 @@ function App() {
           break
 
         case 'PASSWORD_RECOVERY':
-          // ✅ Marcar flujo de recovery + setear sesión + navegar
+          // ✅ Confirmar el flag (por si el hash no lo detectó) y navegar
           isPasswordRecoveryRef.current = true
           currentUserIdRef.current = newUserId
           setSession(newSession)
-          navigate('/reset-password')
+          navigate('/reset-password', { replace: true })
           break
 
         case 'USER_UPDATED':
-          // ✅ Limpiar flag al completar el cambio de contraseña
+          // ✅ Limpiar flag al completar cambio de contraseña → redirigir al dashboard
           isPasswordRecoveryRef.current = false
-          if (newUserId !== currentUserId) {
-            currentUserIdRef.current = newUserId
-            setSession(newSession)
-          }
+          currentUserIdRef.current = newUserId
+          setSession(newSession)
+          navigate('/dashboard', { replace: true })
           break
 
         default:
@@ -174,8 +177,10 @@ function App() {
     }
   }, [])
 
+  // ✅ FIX 2: /reset-password nunca dispara redirect automático
   useEffect(() => {
     if (loading || !session) return
+    if (location.pathname === '/reset-password') return
 
     if (session.user?.email === 'president@odontolog.lat') {
       if (location.pathname !== '/admin') {
