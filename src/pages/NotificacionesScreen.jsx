@@ -2,14 +2,15 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useSuscripcion } from '../hooks/SuscripcionContext'
+import LanguageSelector from '../components/LanguageSelector'
 
 export default function NotificacionesScreen() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
-  
-  const { 
-    userProfile, 
-    isPremium, 
+
+  const {
+    userProfile,
+    isPremium,
     loading: suscripcionLoading,
     notificaciones,
     noLeidas,
@@ -73,33 +74,47 @@ export default function NotificacionesScreen() {
     return claves[notif.tipo] ? t(claves[notif.tipo]) : notif.titulo
   }
 
-  // ✅ Traducir mensaje según tipo
+  // ✅ Traducir mensaje con datos dinámicos del paciente y fecha
   const getMensajeTraducido = (notif) => {
-    const claves = {
-      cita_confirmada:   'notificaciones.msgCitaConfirmada',
-      cita_cancelada:    'notificaciones.msgCitaCancelada',
-      cita_reprogramar:  'notificaciones.msgCitaReprogramar',
-      cita_recordatorio: 'notificaciones.msgCitaRecordatorio',
-      mensaje_recibido:  'notificaciones.msgMensajeRecibido',
-      pago_recibido:     'notificaciones.msgPagoRecibido',
-      pago_vencido:      'notificaciones.msgPagoVencido',
+    const nombre   = notif.paciente_nombre || ''
+    const metadata = notif.metadata || {}
+
+    // Formatear fecha del metadata si existe
+    const fecha = metadata.fecha_accion
+      ? new Date(metadata.fecha_accion).toLocaleDateString(i18n.language, {
+          day: 'numeric', month: 'short',
+          hour: '2-digit', minute: '2-digit'
+        })
+      : ''
+
+    const constructores = {
+      cita_confirmada:   () => t('notificaciones.msgCitaConfirmadaDyn',   { nombre, fecha }),
+      cita_cancelada:    () => t('notificaciones.msgCitaCanceladaDyn',    { nombre, fecha }),
+      cita_reprogramar:  () => t('notificaciones.msgCitaReprogramarDyn',  { nombre, fecha }),
+      cita_recordatorio: () => t('notificaciones.msgCitaRecordatorioDyn', { nombre, fecha }),
+      mensaje_recibido:  () => t('notificaciones.msgMensajeRecibido'),
+      pago_recibido:     () => t('notificaciones.msgPagoRecibido'),
+      pago_vencido:      () => t('notificaciones.msgPagoVencido'),
     }
-    return claves[notif.tipo] ? t(claves[notif.tipo]) : notif.mensaje
+
+    return constructores[notif.tipo]
+      ? constructores[notif.tipo]()
+      : notif.mensaje
   }
 
   const formatearFecha = (fecha) => {
-    const ahora = new Date()
+    const ahora     = new Date()
     const notifFecha = new Date(fecha)
-    const diffMs = ahora - notifFecha
-    const diffMins = Math.floor(diffMs / 60000)
+    const diffMs    = ahora - notifFecha
+    const diffMins  = Math.floor(diffMs / 60000)
     const diffHoras = Math.floor(diffMs / 3600000)
-    const diffDias = Math.floor(diffMs / 86400000)
+    const diffDias  = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1)  return t('notificaciones.timeJustNow')
-    if (diffMins < 60) return t('notificaciones.timeMinutes', { count: diffMins })
-    if (diffHoras < 24) return t('notificaciones.timeHours', { count: diffHoras })
+    if (diffMins < 1)   return t('notificaciones.timeJustNow')
+    if (diffMins < 60)  return t('notificaciones.timeMinutes', { count: diffMins })
+    if (diffHoras < 24) return t('notificaciones.timeHours',   { count: diffHoras })
     if (diffDias === 1) return t('common.yesterday')
-    if (diffDias < 7)  return t('notificaciones.timeDays', { count: diffDias })
+    if (diffDias < 7)   return t('notificaciones.timeDays',    { count: diffDias })
 
     return notifFecha.toLocaleDateString(i18n.language, {
       day: 'numeric', month: 'short',
@@ -142,7 +157,9 @@ export default function NotificacionesScreen() {
             <div style={styles.title}>{t('notificaciones.title')}</div>
             <div style={styles.subtitle}>{t('notifications.premiumRequired')}</div>
           </div>
-          <div style={{ width: '80px' }} />
+          <div style={{ minWidth: '80px', display: 'flex', justifyContent: 'flex-end' }}>
+            <LanguageSelector compact showCurrency={false} />
+          </div>
         </div>
         <div style={styles.premiumRequired}>
           <div style={styles.premiumIcon}>⭐</div>
@@ -168,7 +185,9 @@ export default function NotificacionesScreen() {
             <div style={styles.title}>{t('notificaciones.title')}</div>
             <div style={styles.subtitle}>{t('errors.networkError')}</div>
           </div>
-          <div style={{ width: '80px' }} />
+          <div style={{ minWidth: '80px', display: 'flex', justifyContent: 'flex-end' }}>
+            <LanguageSelector compact showCurrency={false} />
+          </div>
         </div>
         <div style={styles.errorContainer}>
           <div style={styles.errorIcon}>⚠️</div>
@@ -201,6 +220,7 @@ export default function NotificacionesScreen() {
           </div>
         </div>
         <div style={styles.headerActions}>
+          <LanguageSelector compact showCurrency={false} />
           <button
             onClick={refreshNotificaciones}
             style={styles.refreshButton}
@@ -269,10 +289,12 @@ export default function NotificacionesScreen() {
                         </span>
                       )}
                     </div>
-                    {/* ✅ Mensaje traducido */}
+
+                    {/* ✅ Mensaje traducido con datos dinámicos */}
                     <div style={styles.notificacionMensaje}>
                       {getMensajeTraducido(notif)}
                     </div>
+
                     <div style={styles.notificacionMeta}>
                       <span style={styles.notificacionFecha}>
                         {formatearFecha(notif.created_at)}
@@ -305,17 +327,7 @@ export default function NotificacionesScreen() {
                     </button>
                   </div>
                 </div>
-
-                {/* Metadata */}
-                {notif.metadata && (
-                  <div style={styles.notificacionMetadata}>
-                    {Object.entries(notif.metadata).map(([key, value]) => (
-                      <span key={key} style={styles.metadataItem}>
-                        {key}: {value}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* ✅ Metadata oculta — no se muestra al usuario */}
               </div>
             ))}
           </div>
@@ -349,7 +361,7 @@ const styles = {
   premiumIcon: { fontSize: '80px' },
   premiumTitle: { fontSize: '28px', fontWeight: '700', color: '#1f2937' },
   premiumText: { fontSize: '16px', color: '#6b7280', textAlign: 'center', maxWidth: '500px', lineHeight: '1.6' },
-  upgradeButton: { padding: '16px 32px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' },
+  upgradeButton: { padding: '16px 32px', backgroundColor: '#3b82f6', color: '#ffffff', border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' },
   header: { display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
   backButton: { padding: '8px 16px', backgroundColor: 'transparent', border: 'none', color: '#6b7280', fontSize: '16px', fontWeight: '500', cursor: 'pointer', borderRadius: '6px' },
   headerInfo: { flex: 1, textAlign: 'center' },
@@ -381,8 +393,6 @@ const styles = {
   notificacionActions: { display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 },
   markReadButton: { padding: '6px 10px', backgroundColor: '#10b981', border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '12px', cursor: 'pointer', fontWeight: '600' },
   deleteButton: { padding: '6px 10px', backgroundColor: 'transparent', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#9ca3af', fontSize: '16px', cursor: 'pointer', lineHeight: 1 },
-  notificacionMetadata: { marginTop: '16px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', display: 'flex', gap: '12px', flexWrap: 'wrap' },
-  metadataItem: { fontSize: '11px', color: '#6b7280', backgroundColor: '#ffffff', padding: '4px 8px', borderRadius: '4px', border: '1px solid #e5e7eb' },
   footer: { textAlign: 'center', padding: '20px', backgroundColor: '#ffffff', borderTop: '1px solid #e5e7eb' },
   footerInfo: { fontSize: '12px', color: '#10b981', fontWeight: '600', marginBottom: '4px' },
   footerText: { fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' },
