@@ -62,11 +62,7 @@ export default function DashboardScreen({ session }) {
   }, [isAdmin, userProfile?.email, navigate])
 
   // ✅ VERIFICACIÓN ONBOARDING - REDIRECT AUTOMÁTICO
-  useEffect(() => {
-    if (needsOnboarding && !suscripcionLoading && userProfile?.id) {
-      navigate('/onboarding', { replace: true })
-    }
-  }, [needsOnboarding, suscripcionLoading, userProfile?.id, navigate])
+  
 
   // ✅ CARGAR STATS - useCallback para estabilidad
   const getStats = useCallback(async () => {
