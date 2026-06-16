@@ -405,25 +405,38 @@
     "networkError": "Connection error. Check your internet."
   },
 
-  "currencies": {
-    "PYG": "Paraguayan Guarani",
-    "USD": "US Dollar",
-    "BRL": "Brazilian Real",
-    "ARS": "Argentine Peso",
-    "CLP": "Chilean Peso",
-    "BOB": "Bolivian Boliviano",
-    "UYU": "Uruguayan Peso"
-  },
+ "currencies": {
+  "PYG": "Paraguayan Guaraní",
+  "USD": "US Dollar",
+  "BRL": "Brazilian Real",
+  "ARS": "Argentine Peso",
+  "CLP": "Chilean Peso",
+  "BOB": "Bolivian Boliviano",
+  "UYU": "Uruguayan Peso",
+  "COP": "Colombian Peso",
+  "PEN": "Peruvian Sol",
+  "VES": "Venezuelan Bolívar",
+  "EUR": "Euro"
+},
 
-  "countries": {
-    "PY": "Paraguay",
-    "BR": "Brazil",
-    "AR": "Argentina",
-    "CL": "Chile",
-    "BO": "Bolivia",
-    "UY": "Uruguay",
-    "US": "United States"
-  },
+ "countries": {
+  "PY": "Paraguay",
+  "BR": "Brazil",
+  "AR": "Argentina",
+  "CL": "Chile",
+  "BO": "Bolivia",
+  "UY": "Uruguay",
+  "CO": "Colombia",
+  "PE": "Peru",
+  "VE": "Venezuela",
+  "EC": "Ecuador",
+  "US": "United States",
+  "ES": "Spain",
+  "DE": "Germany",
+  "FR": "France",
+  "IT": "Italy",
+  "PT": "Portugal"
+},
   
   "landing": {
     "subtitle": "Practice management software for dental clinics",
@@ -432,18 +445,6 @@
     "createFreeAccount": "Create Free Account",
     "features": "Features",
     "featuresTitle": "Everything your dental clinic needs",
-    "feature1Title": "Patient Management",
-    "feature1Text": "Complete clinical history, interactive dental chart and detailed tracking of each patient",
-    "feature2Title": "Appointment Calendar",
-    "feature2Text": "Intuitive scheduling for managing appointments. Automatic reminders via email and WhatsApp",
-    "feature3Title": "Financial Control",
-    "feature3Text": "Budgets, payments, installment plans, accounts receivable and detailed financial reports",
-    "feature4Title": "Digital Dental Chart",
-    "feature4Text": "Complete visual record of each patient's dental status with procedure history",
-    "feature5Title": "Reports & Analytics",
-    "feature5Text": "Key metrics for your clinic, revenue charts, expenses and monthly performance",
-    "feature6Title": "PDF Receipts & Budgets",
-    "feature6Text": "Generate professional budgets and receipts. Automatic delivery via email and WhatsApp",
     "pricing": "Pricing",
     "pricingTitle": "Simple and transparent pricing",
     "planFree": "Free",
@@ -549,7 +550,11 @@
     "createAccount": "Create Account",
     "successMessage": "Account created! Check your email to confirm.",
     "phoneInvalid": "Enter a valid phone number",
-    "phoneHint": "E.g.: {{ejemplo}}"
+    "phoneHint": "E.g.: {{ejemplo}}",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "passwordMismatch": "Passwords do not match",
+    "passwordMatch": "Passwords match",
+    "passwordConfirmPlaceholder": "Repeat your password"
   },
   "emailTemplates": {
     "reminderTitle": "Appointment Reminder",

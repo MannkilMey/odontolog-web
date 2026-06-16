@@ -412,7 +412,11 @@
     "ARS": "Peso Argentino",
     "CLP": "Peso Chileno",
     "BOB": "Boliviano",
-    "UYU": "Peso Uruguayo"
+    "UYU": "Peso Uruguayo",
+    "COP": "Peso Colombiano",
+    "PEN": "Sol Peruano",
+    "VES": "Bolívar Venezolano",
+    "EUR": "Euro"
   },
 
   "countries": {
@@ -422,7 +426,16 @@
     "CL": "Chile",
     "BO": "Bolivia",
     "UY": "Uruguay",
-    "US": "Estados Unidos"
+    "US": "Estados Unidos",
+    "CO": "Colombia",
+    "PE": "Perú",
+    "VE": "Venezuela",
+    "EC": "Ecuador",
+    "ES": "España",
+    "DE": "Alemania",
+    "FR": "Francia",
+    "IT": "Italia",
+    "PT": "Portugal"
   },
   "landing": {
     "subtitle": "Software de gestión para clínicas dentales",
@@ -431,18 +444,6 @@
     "createFreeAccount": "Crear Cuenta Gratis",
     "features": "Funcionalidades",
     "featuresTitle": "Todo lo que tu clínica dental necesita",
-    "feature1Title": "Gestión de Pacientes",
-    "feature1Text": "Historial clínico completo, odontograma interactivo y seguimiento detallado de cada paciente",
-    "feature2Title": "Calendario de Citas",
-    "feature2Text": "Agenda intuitiva para gestionar horarios y citas. Recordatorios automáticos por email y WhatsApp",
-    "feature3Title": "Control Financiero",
-    "feature3Text": "Presupuestos, pagos, planes de cuotas, cuentas por cobrar y reportes financieros detallados",
-    "feature4Title": "Odontograma Digital",
-    "feature4Text": "Registro visual completo del estado dental de cada paciente con historial de procedimientos",
-    "feature5Title": "Reportes y Análisis",
-    "feature5Text": "Métricas clave de tu clínica, gráficos de ingresos, gastos y rendimiento mensual",
-    "feature6Title": "Recibos y Presupuestos PDF",
-    "feature6Text": "Genera presupuestos y recibos profesionales. Envío automático por email y WhatsApp",
     "pricing": "Precios",
     "pricingTitle": "Planes simples y transparentes",
     "planFree": "Gratuito",
@@ -550,7 +551,11 @@
     "createAccount": "Crear Cuenta",
     "successMessage": "¡Cuenta creada! Revisa tu email para confirmar.",
     "phoneInvalid": "Ingresa un número de teléfono válido",
-    "phoneHint": "Ej: {{ejemplo}}"
+    "phoneHint": "Ej: {{ejemplo}}",
+    "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "passwordMatch": "Las contraseñas coinciden",
+    "passwordConfirmPlaceholder": "Repetí tu contraseña"
   },
   "emailTemplates": {
     "reminderTitle": "Recordatorio de Cita",

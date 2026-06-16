@@ -405,25 +405,38 @@
     "networkError": "Erro de conexão. Verifique sua internet."
   },
 
-  "currencies": {
-    "PYG": "Guarani Paraguaio",
-    "USD": "Dólar Americano",
-    "BRL": "Real Brasileiro",
-    "ARS": "Peso Argentino",
-    "CLP": "Peso Chileno",
-    "BOB": "Boliviano",
-    "UYU": "Peso Uruguaio"
-  },
+"currencies": {
+  "PYG": "Guarani Paraguaio",
+  "USD": "Dólar Americano",
+  "BRL": "Real Brasileiro",
+  "ARS": "Peso Argentino",
+  "CLP": "Peso Chileno",
+  "BOB": "Boliviano",
+  "UYU": "Peso Uruguaio",
+  "COP": "Peso Colombiano",
+  "PEN": "Sol Peruano",
+  "VES": "Bolívar Venezuelano",
+  "EUR": "Euro"
+},
 
-  "countries": {
-    "PY": "Paraguai",
-    "BR": "Brasil",
-    "AR": "Argentina",
-    "CL": "Chile",
-    "BO": "Bolívia",
-    "UY": "Uruguai",
-    "US": "Estados Unidos"
-  },
+"countries": {
+  "PY": "Paraguai",
+  "BR": "Brasil",
+  "AR": "Argentina",
+  "CL": "Chile",
+  "BO": "Bolívia",
+  "UY": "Uruguai",
+  "CO": "Colômbia",
+  "PE": "Peru",
+  "VE": "Venezuela",
+  "EC": "Equador",
+  "US": "Estados Unidos",
+  "ES": "Espanha",
+  "DE": "Alemanha",
+  "FR": "França",
+  "IT": "Itália",
+  "PT": "Portugal"
+},
   "landing": {
     "subtitle": "Software de gestão para clínicas odontológicas",
     "description": "Gerencie pacientes, consultas, odontogramas digitais, pagamentos e parcelamentos em um só lugar. Comece grátis.",
@@ -431,18 +444,7 @@
     "createFreeAccount": "Criar Conta Grátis",
     "features": "Funcionalidades",
     "featuresTitle": "Tudo que sua clínica odontológica precisa",
-    "feature1Title": "Gestão de Pacientes",
-    "feature1Text": "Histórico clínico completo, odontograma interativo e acompanhamento detalhado de cada paciente",
-    "feature2Title": "Calendário de Consultas",
-    "feature2Text": "Agenda intuitiva para gerenciar horários e consultas. Lembretes automáticos por e-mail e WhatsApp",
-    "feature3Title": "Controle Financeiro",
-    "feature3Text": "Orçamentos, pagamentos, parcelamentos, contas a receber e relatórios financeiros detalhados",
-    "feature4Title": "Odontograma Digital",
-    "feature4Text": "Registro visual completo do estado dental de cada paciente com histórico de procedimentos",
-    "feature5Title": "Relatórios e Análises",
-    "feature5Text": "Métricas-chave da sua clínica, gráficos de receita, despesas e desempenho mensal",
-    "feature6Title": "Recibos e Orçamentos PDF",
-    "feature6Text": "Gere orçamentos e recibos profissionais. Envio automático por e-mail e WhatsApp",
+
     "pricing": "Preços",
     "pricingTitle": "Planos simples e transparentes",
     "planFree": "Gratuito",
@@ -548,7 +550,11 @@
     "createAccount": "Criar Conta",
     "successMessage": "Conta criada! Verifique seu e-mail para confirmar.",
     "phoneInvalid": "Digite um número de telefone válido",
-    "phoneHint": "Ex: {{ejemplo}}"
+    "phoneHint": "Ex: {{ejemplo}}",
+    "passwordTooShort": "A senha deve ter pelo menos 6 caracteres",
+    "passwordMismatch": "As senhas não coincidem",
+    "passwordMatch": "As senhas coincidem",
+    "passwordConfirmPlaceholder": "Repita sua senha"
   },
   "emailTemplates": {
     "reminderTitle": "Lembrete de Consulta",
