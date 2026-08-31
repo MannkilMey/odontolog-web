@@ -56,7 +56,7 @@ export default function LandingPage() {
 
         <div style={styles.heroContent}>
           <div style={styles.logo} role="img" aria-label="OdontoLog logo dental">🦷</div>
-          <h1 style={styles.title}>OdontoLog</h1>
+          <h1 style={styles.title}>OdontoLog by MYR E.A.S.</h1>
           <p style={styles.subtitle}>{t('landing.subtitle')}</p>
           <p style={styles.description}>{t('landing.description')}</p>
 
